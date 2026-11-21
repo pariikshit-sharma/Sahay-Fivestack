@@ -46,7 +46,7 @@ describe("Scheme Matching & Checklist API Service", () => {
     for (const scheme of VERIFIED_NATIONAL_SCHEMES) {
       expect(scheme.documents.length).toBeGreaterThan(0);
       expect(scheme.sources.length).toBeGreaterThan(0);
-      expect(scheme.officialPortalUrl).toMatch(/^https:\/\/.*\.gov\.in/);
+      expect(scheme.officialPortalUrl).toMatch(/^https:\/\/.*(\.gov\.in|\.nic\.in)/);
       expect(scheme.verificationStatus).toBe("verified");
     }
   });

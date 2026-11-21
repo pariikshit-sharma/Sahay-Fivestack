@@ -585,8 +585,11 @@ export const PMMVY_SCHEME: Scheme = {
   ],
 };
 
+import { REGIONAL_AND_NATIONAL_EXPANSION_SCHEMES } from "./regional-expansion-seeds";
+
 export const VERIFIED_NATIONAL_SCHEMES: Scheme[] = [
   PM_KISAN_SCHEME,
   PM_JAY_SCHEME,
   PMMVY_SCHEME,
+  ...REGIONAL_AND_NATIONAL_EXPANSION_SCHEMES,
 ];
