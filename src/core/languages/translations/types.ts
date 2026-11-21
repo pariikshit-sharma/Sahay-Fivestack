@@ -1,0 +1,83 @@
+export interface TranslationStrings {
+  common: {
+    appName: string;
+    tagline: string;
+    simpleMode: string;
+    detailedMode: string;
+    switchMode: string;
+    changeLanguage: string;
+    back: string;
+    next: string;
+    submit: string;
+    confirm: string;
+    speakNow: string;
+    listening: string;
+    stopListening: string;
+    typeInstead: string;
+    speakInstead: string;
+    skip: string;
+    loading: string;
+    error: string;
+    readAloud: string;
+    stopAudio: string;
+    verifiedGovSource: string;
+    centralScheme: string;
+    stateScheme: string;
+  };
+  landing: {
+    heroTitle: string;
+    heroSubtitle: string;
+    heroVoiceButton: string;
+    heroDetailedButton: string;
+    trustNote: string;
+    feature1Title: string;
+    feature1Desc: string;
+    feature2Title: string;
+    feature2Desc: string;
+    feature3Title: string;
+    feature3Desc: string;
+    coverageTitle: string;
+    coverageSubtitle: string;
+  };
+  simpleMode: {
+    welcomeTitle: string;
+    welcomeSubtitle: string;
+    onboardingStep: string;
+    questionState: string;
+    questionOccupation: string;
+    questionIncome: string;
+    questionLand: string;
+    questionAge: string;
+    questionGender: string;
+    reviewTitle: string;
+    reviewSubtitle: string;
+    resultsTitle: string;
+    resultsSubtitle: string;
+    whyEligible: string;
+    missingInfoTitle: string;
+    applyOfficial: string;
+  };
+  detailedMode: {
+    searchPlaceholder: string;
+    filterState: string;
+    filterDepartment: string;
+    filterCategory: string;
+    filterLevel: string;
+    allStates: string;
+    allCategories: string;
+    allLevels: string;
+    resultsFound: string;
+    viewChecklist: string;
+    officialWebsite: string;
+    verifiedOn: string;
+    eligibilityBreakdown: string;
+    documentsRequired: string;
+    compareSchemes: string;
+  };
+  status: {
+    likelyEligible: string;
+    needsInformation: string;
+    notEligible: string;
+    manualVerification: string;
+  };
+}

@@ -1,0 +1,93 @@
+import { TranslationStrings } from "./types";
+
+export const en: TranslationStrings = {
+  common: {
+    appName: "SAHAY",
+    tagline: "Your benefits. Your language. Your access.",
+    simpleMode: "Simple Mode",
+    detailedMode: "Detailed Mode",
+    switchMode: "Switch Mode",
+    changeLanguage: "Language",
+    back: "Back",
+    next: "Next",
+    submit: "Submit",
+    confirm: "Confirm & Check Schemes",
+    speakNow: "Tap to Speak",
+    listening: "Listening... speak now",
+    stopListening: "Done Speaking",
+    typeInstead: "Type instead",
+    speakInstead: "Speak instead",
+    skip: "Skip for now",
+    loading: "Verifying government scheme criteria...",
+    error: "Something went wrong. Please try again.",
+    readAloud: "Listen to this",
+    stopAudio: "Stop listening",
+    verifiedGovSource: "Verified Official Government Scheme",
+    centralScheme: "Central Government Scheme",
+    stateScheme: "State Government Scheme",
+  },
+  landing: {
+    heroTitle: "Discover the government support meant for you.",
+    heroSubtitle:
+      "You don't need to know the name of a scheme or technical government terms. Just tell us about yourself in your own language, and SAHAY will show what benefits you may qualify for.",
+    heroVoiceButton: "Start by Speaking (Simple Mode)",
+    heroDetailedButton: "Search & Filter Schemes (Detailed Mode)",
+    trustNote:
+      "Grounded in verified official circulars. No personal Aadhaar or sensitive passwords requested.",
+    feature1Title: "Voice-First & Multilingual",
+    feature1Desc:
+      "Speak comfortably in your mother tongue. SAHAY understands everyday speech and speaks back clearly.",
+    feature2Title: "Deterministic, Accurate Logic",
+    feature2Desc:
+      "Eligibility is verified by strict government rules, not guessed by AI. Every recommendation includes why you qualify.",
+    feature3Title: "Official Direct Channels",
+    feature3Desc:
+      "Get complete document checklists and direct links to official government application portals (.gov.in).",
+    coverageTitle: "National Coverage Transparency",
+    coverageSubtitle:
+      "We openly show which state and central schemes are verified, so you always know what information is official.",
+  },
+  simpleMode: {
+    welcomeTitle: "Namaste! Let's find your benefits.",
+    welcomeSubtitle:
+      "Answer a few simple questions by speaking or tapping. We keep your information private.",
+    onboardingStep: "Step",
+    questionState: "Which state or union territory do you live in?",
+    questionOccupation: "What do you do for work?",
+    questionIncome: "Roughly how much does your entire household earn in a year?",
+    questionLand: "Do you own agricultural land? If yes, approximately how many acres?",
+    questionAge: "How old are you?",
+    questionGender: "What is your gender?",
+    reviewTitle: "Please confirm your details",
+    reviewSubtitle: "You can tap any item to correct it before checking schemes.",
+    resultsTitle: "Schemes that may apply to you",
+    resultsSubtitle:
+      "Based strictly on verified government guidelines. Tap any scheme to see documents and application steps.",
+    whyEligible: "Why you may qualify",
+    missingInfoTitle: "Additional information needed to confirm",
+    applyOfficial: "Apply on Official Portal",
+  },
+  detailedMode: {
+    searchPlaceholder: "Search schemes by keyword, department, or benefit...",
+    filterState: "State / UT",
+    filterDepartment: "Ministry / Department",
+    filterCategory: "Benefit Type",
+    filterLevel: "Scheme Level",
+    allStates: "All States & Pan-India",
+    allCategories: "All Benefit Types",
+    allLevels: "All Levels (Central & State)",
+    resultsFound: "verified schemes found",
+    viewChecklist: "View Checklist & Details",
+    officialWebsite: "Official Government Portal",
+    verifiedOn: "Last verified on",
+    eligibilityBreakdown: "Official Eligibility Criteria Breakdown",
+    documentsRequired: "Required Documents Matrix",
+    compareSchemes: "Compare Schemes",
+  },
+  status: {
+    likelyEligible: "Likely Eligible",
+    needsInformation: "Needs More Information",
+    notEligible: "Not Eligible",
+    manualVerification: "Requires Manual Verification",
+  },
+};
