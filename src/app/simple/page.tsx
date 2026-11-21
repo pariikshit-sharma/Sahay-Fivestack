@@ -38,6 +38,8 @@ import {
   getDocumentName,
   getRuleExplanation,
 } from "@/core/languages/scheme-localization";
+import { DocumentUploader } from "@/components/documents/DocumentUploader";
+import { AutoApplyModal } from "@/components/schemes/AutoApplyModal";
 
 export default function SimpleModePage() {
   const { t, language } = useApp();
@@ -51,6 +53,9 @@ export default function SimpleModePage() {
   const [followUp, setFollowUp] = useState<ExtractionResult["suggestedFollowUp"]>(undefined);
   const [isProcessing, setIsProcessing] = useState(false);
   const [matches, setMatches] = useState<SchemeEvaluationResult[]>([]);
+
+  // Auto-apply modal state
+  const [activeApplyScheme, setActiveApplyScheme] = useState<{ id: string; title: string; url: string } | null>(null);
 
   // Quick preset voice phrases for easy testing / quick tapping
   const quickPresets = [
@@ -667,11 +672,11 @@ export default function SimpleModePage() {
                     )}
                   </div>
 
-                  {/* Required Documents Matrix */}
-                  <div className="space-y-2">
+                  {/* Required Documents Matrix & Document Uploader */}
+                  <div className="space-y-3">
                     <div className="text-xs font-bold text-sahay-navy-950 uppercase tracking-wider flex items-center gap-1.5">
                       <FileCheck className="w-4 h-4 text-sahay-navy-800" />
-                      <span>{t.detailedMode.documentsRequired}</span>
+                      <span>{t.detailedMode.documentsRequired} & Upload</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {res.scheme.documents.map((doc) => (
@@ -683,28 +688,71 @@ export default function SimpleModePage() {
                         </span>
                       ))}
                     </div>
+
+                    {/* Integrated Document Uploader for this Scheme */}
+                    {isEligible && (
+                      <div className="pt-2">
+                        <DocumentUploader
+                          requiredDocType={getDocumentName(res.scheme.documents[0] || { nameEn: "Aadhaar Card" }, language)}
+                          schemeId={res.scheme.id}
+                          schemeTitle={getSchemeTitle(res.scheme, language)}
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  {/* Direct Official Link */}
-                  <div className="pt-2 flex items-center justify-between border-t border-sahay-warm-200">
+                  {/* Actions: One-Click Auto Apply + Official Portal */}
+                  <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-sahay-warm-200">
                     <span className="text-xs text-sahay-warm-700 font-mono">
                       Verified Gazette Provenance
                     </span>
-                    <a
-                      href={res.scheme.officialPortalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button variant="primary" size="sm" className="flex items-center gap-2 min-h-[44px]">
-                        <span>{t.simpleMode.applyOfficial}</span>
-                        <ExternalLink className="w-4 h-4" />
-                      </Button>
-                    </a>
+                    
+                    <div className="flex items-center gap-2">
+                      {isEligible && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveApplyScheme({
+                              id: res.scheme.id,
+                              title: getSchemeTitle(res.scheme, language),
+                              url: res.scheme.officialPortalUrl,
+                            })
+                          }
+                          className="px-4 py-2 rounded-xl bg-sahay-green-700 hover:bg-sahay-green-800 text-white font-bold text-sm shadow transition-all flex items-center gap-1.5 min-h-[44px]"
+                        >
+                          <Sparkles className="w-4 h-4 text-amber-300" />
+                          <span>Apply Now (Pre-fill)</span>
+                        </button>
+                      )}
+
+                      <a
+                        href={res.scheme.officialPortalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button variant="outline" size="sm" className="flex items-center gap-2 min-h-[44px]">
+                          <span>{t.simpleMode.applyOfficial}</span>
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      </a>
+                    </div>
                   </div>
                 </Card>
               );
             })}
           </div>
+
+          {/* Modal for Auto Apply */}
+          {activeApplyScheme && (
+            <AutoApplyModal
+              schemeId={activeApplyScheme.id}
+              schemeTitle={activeApplyScheme.title}
+              officialPortalUrl={activeApplyScheme.url}
+              profile={profile}
+              isOpen={!!activeApplyScheme}
+              onClose={() => setActiveApplyScheme(null)}
+            />
+          )}
         </div>
       )}
     </div>

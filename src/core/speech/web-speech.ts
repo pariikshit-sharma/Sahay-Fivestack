@@ -9,7 +9,10 @@ declare global {
 
 export class WebSpeechAdapter implements SpeechToTextAdapter {
   private recognition: any = null;
-  private isListening: boolean = false;
+  private isExplicitlyStarted: boolean = false;
+  private currentLanguage: string = "hi-IN";
+  private restartTimeout: any = null;
+  private accumulatedTranscript: string = "";
 
   isSupported(): boolean {
     if (typeof window === "undefined") return false;
@@ -24,87 +27,114 @@ export class WebSpeechAdapter implements SpeechToTextAdapter {
   ): void {
     if (!this.isSupported()) {
       onStateChange("unsupported");
-      onError("Speech recognition is not supported in this browser. Please use Google Chrome or type instead.");
+      onError("Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge, or type instead.");
       return;
     }
 
-    try {
-      const SpeechRecognitionConstructor =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+    this.currentLanguage = bcp47Language;
+    this.isExplicitlyStarted = true;
+    this.accumulatedTranscript = "";
 
-      if (this.recognition) {
-        try {
-          this.recognition.abort();
-        } catch {}
-      }
+    const initAndStart = () => {
+      if (!this.isExplicitlyStarted) return;
 
-      this.recognition = new SpeechRecognitionConstructor();
-      this.recognition.lang = bcp47Language;
-      this.recognition.continuous = true;
-      this.recognition.interimResults = true;
-      this.recognition.maxAlternatives = 1;
+      try {
+        const SpeechRecognitionConstructor =
+          window.SpeechRecognition || window.webkitSpeechRecognition;
 
-      this.recognition.onstart = () => {
-        this.isListening = true;
-        onStateChange("listening");
-      };
+        if (this.recognition) {
+          try {
+            this.recognition.abort();
+          } catch {}
+          this.recognition = null;
+        }
 
-      this.recognition.onresult = (event: any) => {
-        let interimTranscript = "";
-        let finalTranscript = "";
+        const rec = new SpeechRecognitionConstructor();
+        rec.lang = this.currentLanguage;
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.maxAlternatives = 1;
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const item = event.results[i];
-          if (item.isFinal) {
-            finalTranscript += item[0].transcript;
-          } else {
-            interimTranscript += item[0].transcript;
+        rec.onstart = () => {
+          onStateChange("listening");
+        };
+
+        rec.onresult = (event: any) => {
+          let interim = "";
+          let final = "";
+
+          for (let i = 0; i < event.results.length; ++i) {
+            const res = event.results[i];
+            if (res.isFinal) {
+              final += res[0].transcript + " ";
+            } else {
+              interim += res[0].transcript;
+            }
           }
-        }
 
-        const transcript = (finalTranscript || interimTranscript).trim();
-        if (transcript) {
-          onResult({
-            transcript,
-            isFinal: !!finalTranscript,
-            confidence: event.results[0]?.[0]?.confidence,
-          });
-        }
-      };
+          const combined = (final + interim).trim();
+          if (combined) {
+            onResult({
+              transcript: combined,
+              isFinal: !!final,
+              confidence: event.results[0]?.[0]?.confidence,
+            });
+          }
+        };
 
-      this.recognition.onerror = (event: any) => {
-        this.isListening = false;
-        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-          onStateChange("permission_denied");
-          onError("Microphone permission was denied. Please allow microphone access in your browser settings.");
-        } else if (event.error === "no-speech") {
-          onStateChange("idle");
-          // Non-critical, user just stayed quiet
-        } else {
-          onStateChange("error");
-          onError(`Speech recognition error: ${event.error || "unknown"}`);
-        }
-      };
+        rec.onerror = (event: any) => {
+          console.warn("[SAHAY Speech Recognition Error]:", event.error);
 
-      this.recognition.onend = () => {
-        this.isListening = false;
-        onStateChange("idle");
-      };
+          if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+            this.isExplicitlyStarted = false;
+            onStateChange("permission_denied");
+            onError("Microphone permission was denied. Please allow microphone access in your browser settings (click lock icon in address bar).");
+          } else if (event.error === "no-speech") {
+            // Keep listening, do not abort
+          } else if (event.error === "network") {
+            // Chrome speech recognition uses Google servers; network glitch
+            console.warn("[SAHAY Speech]: network glitch, attempting keep-alive restart...");
+          }
+        };
 
-      this.recognition.start();
-    } catch (err: any) {
-      this.isListening = false;
-      onStateChange("error");
-      onError(err.message || "Failed to initialize microphone.");
-    }
+        rec.onend = () => {
+          // If the user hasn't explicitly clicked Stop, automatically keep recognition alive!
+          if (this.isExplicitlyStarted) {
+            clearTimeout(this.restartTimeout);
+            this.restartTimeout = setTimeout(() => {
+              if (this.isExplicitlyStarted) {
+                try {
+                  rec.start();
+                } catch {
+                  initAndStart();
+                }
+              }
+            }, 300);
+          } else {
+            onStateChange("idle");
+          }
+        };
+
+        this.recognition = rec;
+        rec.start();
+      } catch (err: any) {
+        console.error("[SAHAY Speech Init Failed]:", err);
+        this.isExplicitlyStarted = false;
+        onStateChange("error");
+        onError(err.message || "Failed to initialize microphone.");
+      }
+    };
+
+    initAndStart();
   }
 
   stop(): void {
-    if (this.recognition && this.isListening) {
+    this.isExplicitlyStarted = false;
+    clearTimeout(this.restartTimeout);
+    if (this.recognition) {
       try {
         this.recognition.stop();
       } catch {}
-      this.isListening = false;
     }
   }
 }
