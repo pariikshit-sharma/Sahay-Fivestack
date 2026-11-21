@@ -64,6 +64,14 @@ export function Footer() {
                 <span className="w-1.5 h-1.5 rounded-full bg-sahay-navy-900"></span>
                 <span>WCAG 2.1 AA Accessibility Compliant</span>
               </li>
+              <li className="pt-2">
+                <Link
+                  href="/coverage"
+                  className="text-xs font-semibold text-sahay-navy-900 underline underline-offset-4 hover:text-sahay-navy-700"
+                >
+                  → राष्ट्रीय कवरेज डैशबोर्ड देखें (View Coverage Dashboard)
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

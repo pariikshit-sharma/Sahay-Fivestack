@@ -64,6 +64,12 @@ export function Navbar() {
 
           {/* Controls: Mode Switch & Language Selector */}
           <div className="flex items-center gap-3 sm:gap-4">
+            <Link
+              href="/coverage"
+              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-sahay-navy-800 hover:text-sahay-navy-950 rounded-lg hover:bg-sahay-warm-100"
+            >
+              <span>कवरेज • Coverage</span>
+            </Link>
             <div className="hidden sm:block">
               <ModeSwitch />
             </div>
