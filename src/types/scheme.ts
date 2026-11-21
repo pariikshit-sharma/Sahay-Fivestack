@@ -36,6 +36,7 @@ export interface EligibilityRule {
   ruleGroup: number; // Rules in same group are AND-ed; multiple groups are OR-ed
   explanationEn: string;
   explanationHi: string;
+  translations?: Record<string, string>;
   missingPromptEn: string;
   missingPromptHi: string;
 }
@@ -46,6 +47,7 @@ export interface SchemeDocument {
   documentCode: string;
   nameEn: string;
   nameHi: string;
+  translations?: Record<string, string>;
   descriptionEn?: string;
   descriptionHi?: string;
   isMandatory: boolean;
@@ -69,9 +71,12 @@ export interface Scheme {
   officialCode?: string;
   titleEn: string;
   titleHi: string;
+  titles?: Record<string, string>;
   summaryEn: string;
   summaryHi: string;
+  summaries?: Record<string, string>;
   department: string;
+  departments?: Record<string, string>;
   ministry?: string;
   level: SchemeLevel;
   applicableStates: string[]; // e.g. ['ALL'] or ISO codes like ['IN-HR', 'IN-DL']
@@ -80,6 +85,7 @@ export interface Scheme {
   benefitAmountMax?: number; // In INR
   benefitDescriptionEn: string;
   benefitDescriptionHi: string;
+  benefitDescriptions?: Record<string, string>;
   applicationMode: ApplicationMode;
   officialPortalUrl: string;
   verificationStatus: VerificationStatus;

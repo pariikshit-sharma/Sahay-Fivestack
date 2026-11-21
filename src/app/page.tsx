@@ -20,6 +20,16 @@ import {
   Languages,
   Check,
 } from "lucide-react";
+import {
+  getSchemeTitle,
+  getSchemeSummary,
+  getSchemeBenefitDescription,
+} from "@/core/languages/scheme-localization";
+import {
+  PM_KISAN_SCHEME,
+  PM_JAY_SCHEME,
+  PMMVY_SCHEME,
+} from "@/core/schemes/verified-seeds";
 
 export default function HomePage() {
   const { t, language, mode, setMode } = useApp();
@@ -90,14 +100,18 @@ export default function HomePage() {
               100% Verified Schemes
             </Badge>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-sahay-navy-950">
-              {language === "hi"
+              {language === "en"
+                ? "Active Verified National Welfare Schemes"
+                : language === "hi"
                 ? "सत्यापित राष्ट्रीय कल्याणकारी योजनाएं"
-                : "Active Verified National Welfare Schemes"}
+                : t.landing.coverageTitle}
             </h2>
             <p className="text-sm sm:text-base text-sahay-warm-800">
-              {language === "hi"
+              {language === "en"
+                ? "Every scheme's eligibility rules and required documents are strictly verified from official gazette circulars."
+                : language === "hi"
                 ? "प्रत्येक योजना के नियम, पात्रता और दस्तावेज सीधे आधिकारिक गजट से सत्यापित किए गए हैं।"
-                : "Every scheme's eligibility rules and required documents are strictly verified from official gazette circulars."}
+                : t.landing.trustNote}
             </p>
           </div>
 
@@ -115,30 +129,26 @@ export default function HomePage() {
                   </Badge>
                 </div>
                 <CardTitle>
-                  {language === "hi"
-                    ? "प्रधानमंत्री किसान सम्मान निधि (PM-KISAN)"
-                    : "PM Kisan Samman Nidhi (PM-KISAN)"}
+                  {getSchemeTitle(PM_KISAN_SCHEME, language)}
                 </CardTitle>
                 <CardDescription>
-                  {language === "hi"
-                    ? "खेती योग्य भूमि के स्वामी किसान परिवारों को ₹6,000 प्रति वर्ष की वित्तीय सहायता सीधे बैंक खाते में।"
-                    : "Direct income support of ₹6,000 per year in three installments for landholding farmer families."}
+                  {getSchemeSummary(PM_KISAN_SCHEME, language)}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="p-3 bg-sahay-warm-50 rounded-xl text-xs space-y-1 border border-sahay-warm-200">
                   <div className="flex justify-between font-medium text-sahay-navy-900">
-                    <span>{language === "hi" ? "वार्षिक लाभ:" : "Annual Benefit:"}</span>
+                    <span>{language === "en" ? "Annual Benefit:" : "वार्षिक लाभ:"}</span>
                     <span className="font-bold text-sahay-green-700">₹6,000 / वर्ष</span>
                   </div>
                   <div className="flex justify-between text-sahay-warm-700">
-                    <span>{language === "hi" ? "आधिकारिक पोर्टल:" : "Official Portal:"}</span>
+                    <span>{language === "en" ? "Official Portal:" : "आधिकारिक पोर्टल:"}</span>
                     <span className="font-mono text-sahay-navy-800">pmkisan.gov.in</span>
                   </div>
                 </div>
                 <Link href="/simple?scheme=pm-kisan" className="block w-full">
                   <Button variant="outline" size="sm" className="w-full justify-between">
-                    <span>{language === "hi" ? "पात्रता जांचें" : "Check Eligibility"}</span>
+                    <span>{t.detailedMode.viewChecklist}</span>
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>
@@ -158,30 +168,26 @@ export default function HomePage() {
                   </Badge>
                 </div>
                 <CardTitle>
-                  {language === "hi"
-                    ? "आयुष्मान भारत - पीएम जन आरोग्य योजना (PM-JAY)"
-                    : "Ayushman Bharat - PM-JAY"}
+                  {getSchemeTitle(PM_JAY_SCHEME, language)}
                 </CardTitle>
                 <CardDescription>
-                  {language === "hi"
-                    ? "गंभीर बीमारियों के मुफ्त इलाज हेतु प्रति परिवार ₹5 लाख तक का सालाना स्वास्थ्य बीमा कवर।"
-                    : "Free hospital treatment and cashless health cover of up to ₹5 Lakh per eligible family per year."}
+                  {getSchemeSummary(PM_JAY_SCHEME, language)}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="p-3 bg-sahay-warm-50 rounded-xl text-xs space-y-1 border border-sahay-warm-200">
                   <div className="flex justify-between font-medium text-sahay-navy-900">
-                    <span>{language === "hi" ? "स्वास्थ्य कवर:" : "Health Cover:"}</span>
+                    <span>{language === "en" ? "Health Cover:" : "स्वास्थ्य कवर:"}</span>
                     <span className="font-bold text-sahay-green-700">₹5,00,000 / परिवार</span>
                   </div>
                   <div className="flex justify-between text-sahay-warm-700">
-                    <span>{language === "hi" ? "आधिकारिक पोर्टल:" : "Official Portal:"}</span>
+                    <span>{language === "en" ? "Official Portal:" : "आधिकारिक पोर्टल:"}</span>
                     <span className="font-mono text-sahay-navy-800">pmjay.gov.in</span>
                   </div>
                 </div>
                 <Link href="/simple?scheme=pm-jay" className="block w-full">
                   <Button variant="outline" size="sm" className="w-full justify-between">
-                    <span>{language === "hi" ? "पात्रता जांचें" : "Check Eligibility"}</span>
+                    <span>{t.detailedMode.viewChecklist}</span>
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>
@@ -201,30 +207,26 @@ export default function HomePage() {
                   </Badge>
                 </div>
                 <CardTitle>
-                  {language === "hi"
-                    ? "प्रधानमंत्री मातृ वंदना योजना (PMMVY)"
-                    : "Pradhan Mantri Matru Vandana Yojana (PMMVY)"}
+                  {getSchemeTitle(PMMVY_SCHEME, language)}
                 </CardTitle>
                 <CardDescription>
-                  {language === "hi"
-                    ? "गर्भवती और स्तनपान कराने वाली माताओं के स्वास्थ्य व पोषण हेतु ₹5,000 की वित्तीय सहायता।"
-                    : "Direct cash incentive of ₹5,000 to pregnant women and lactating mothers for health & nutrition."}
+                  {getSchemeSummary(PMMVY_SCHEME, language)}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="p-3 bg-sahay-warm-50 rounded-xl text-xs space-y-1 border border-sahay-warm-200">
                   <div className="flex justify-between font-medium text-sahay-navy-900">
-                    <span>{language === "hi" ? "मातृत्व सहायता:" : "Maternity Aid:"}</span>
+                    <span>{language === "en" ? "Maternity Aid:" : "मातृत्व सहायता:"}</span>
                     <span className="font-bold text-sahay-green-700">₹5,000 सीधे खाते में</span>
                   </div>
                   <div className="flex justify-between text-sahay-warm-700">
-                    <span>{language === "hi" ? "आधिकारिक पोर्टल:" : "Official Portal:"}</span>
+                    <span>{language === "en" ? "Official Portal:" : "आधिकारिक पोर्टल:"}</span>
                     <span className="font-mono text-sahay-navy-800">pmmvy.wcd.gov.in</span>
                   </div>
                 </div>
                 <Link href="/simple?scheme=pmmvy" className="block w-full">
                   <Button variant="outline" size="sm" className="w-full justify-between">
-                    <span>{language === "hi" ? "पात्रता जांचें" : "Check Eligibility"}</span>
+                    <span>{t.detailedMode.viewChecklist}</span>
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>

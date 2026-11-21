@@ -20,6 +20,15 @@ import {
   ArrowRight,
   ChevronRight,
 } from "lucide-react";
+import {
+  getSchemeTitle,
+  getSchemeSummary,
+  getSchemeDepartment,
+  getSchemeBenefitDescription,
+  getDocumentName,
+} from "@/core/languages/scheme-localization";
+import { VERIFIED_NATIONAL_SCHEMES } from "@/core/schemes/verified-seeds";
+import { formatINR } from "@/lib/utils";
 
 export default function DetailedModePage() {
   const { t, language } = useApp();
@@ -28,83 +37,17 @@ export default function DetailedModePage() {
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [selectedLevel, setSelectedLevel] = useState("ALL");
 
-  // Initial verified schemes data
-  const verifiedSchemes = [
-    {
-      id: "pm-kisan",
-      code: "PM-KISAN",
-      level: "central",
-      department: "Ministry of Agriculture & Farmers Welfare",
-      departmentHi: "कृषि एवं किसान कल्याण मंत्रालय",
-      titleEn: "PM Kisan Samman Nidhi",
-      titleHi: "प्रधानमंत्री किसान सम्मान निधि",
-      summaryEn:
-        "Direct income support of ₹6,000 per year in three equal installments to all landholding farmer families across India.",
-      summaryHi:
-        "देश भर के सभी भूमिधारक किसान परिवारों को ₹6,000 प्रति वर्ष की प्रत्यक्ष आय सहायता तीन समान किस्तों में।",
-      benefitAmount: "₹6,000 / year",
-      benefitType: "Cash Transfer (DBT)",
-      officialUrl: "https://pmkisan.gov.in",
-      verifiedDate: "2026-08-15",
-      icon: Wheat,
-      iconColor: "text-amber-700 bg-amber-50 border-amber-200",
-      category: "agriculture",
-      mandatoryDocs: ["Aadhaar Card", "Land Ownership Record (Khatoni/ROR)", "Bank Account (Aadhaar linked)"],
-      mandatoryDocsHi: ["आधार कार्ड", "भूमि स्वामित्व अभिलेख (खतौनी/जमाबंदी)", "बैंक खाता (आधार से लिंक)"],
-    },
-    {
-      id: "pm-jay",
-      code: "PM-JAY",
-      level: "central",
-      department: "National Health Authority (NHA)",
-      departmentHi: "राष्ट्रीय स्वास्थ्य प्राधिकरण (स्वास्थ्य मंत्रालय)",
-      titleEn: "Ayushman Bharat - PM-JAY",
-      titleHi: "आयुष्मान भारत - पीएम जन आरोग्य योजना",
-      summaryEn:
-        "Cashless health insurance cover up to ₹5,00,000 per family per year for secondary and tertiary care hospitalization.",
-      summaryHi:
-        "द्वितीयक और तृतीयक देखभाल अस्पताल में भर्ती के लिए प्रति परिवार प्रति वर्ष ₹5,00,000 तक का कैशलेस स्वास्थ्य बीमा कवर।",
-      benefitAmount: "₹5,00,000 / family / year",
-      benefitType: "Cashless Health Insurance",
-      officialUrl: "https://pmjay.gov.in",
-      verifiedDate: "2026-09-01",
-      icon: HeartPulse,
-      iconColor: "text-red-700 bg-red-50 border-red-200",
-      category: "healthcare",
-      mandatoryDocs: ["Aadhaar Card / Ration Card", "Ayushman Golden Card (generated via eKYC)"],
-      mandatoryDocsHi: ["आधार कार्ड / राशन कार्ड", "आयुष्मान गोल्डन कार्ड (eKYC द्वारा निर्मित)"],
-    },
-    {
-      id: "pmmvy",
-      code: "PMMVY",
-      level: "central",
-      department: "Ministry of Women and Child Development",
-      departmentHi: "महिला एवं बाल विकास मंत्रालय",
-      titleEn: "Pradhan Mantri Matru Vandana Yojana",
-      titleHi: "प्रधानमंत्री मातृ वंदना योजना",
-      summaryEn:
-        "Maternity benefit of ₹5,000 directly transferred to pregnant women and lactating mothers for first living child.",
-      summaryHi:
-        "प्रथम जीवित बच्चे के लिए गर्भवती महिलाओं और स्तनपान कराने वाली माताओं के खाते में ₹5,000 का प्रत्यक्ष मातृत्व लाभ।",
-      benefitAmount: "₹5,00,000 / child",
-      benefitType: "Cash Transfer (Maternity Benefit)",
-      officialUrl: "https://pmmvy.wcd.gov.in",
-      verifiedDate: "2026-07-20",
-      icon: Baby,
-      iconColor: "text-purple-700 bg-purple-50 border-purple-200",
-      category: "women_child",
-      mandatoryDocs: ["Mother & Father Aadhaar", "MCP Card (Mother-Child Protection Card)", "Bank Account Passbook"],
-      mandatoryDocsHi: ["माता व पिता का आधार कार्ड", "एमसीपी कार्ड (मातृ एवं शिशु संरक्षण कार्ड)", "बैंक पासबुक"],
-    },
-  ];
-
-  const filteredSchemes = verifiedSchemes.filter((scheme) => {
+  const filteredSchemes = VERIFIED_NATIONAL_SCHEMES.filter((scheme) => {
+    const titleLocalized = getSchemeTitle(scheme, language);
+    const summaryLocalized = getSchemeSummary(scheme, language);
     const matchesSearch =
       searchQuery === "" ||
       scheme.titleEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
       scheme.titleHi.includes(searchQuery) ||
-      scheme.code.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "ALL" || scheme.category === selectedCategory;
+      titleLocalized.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      summaryLocalized.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (scheme.officialCode && scheme.officialCode.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = selectedCategory === "ALL" || scheme.benefitType === selectedCategory;
     const matchesLevel = selectedLevel === "ALL" || scheme.level === selectedLevel;
     return matchesSearch && matchesCategory && matchesLevel;
   });
@@ -124,14 +67,18 @@ export default function DetailedModePage() {
             </Badge>
           </div>
           <h1 className="text-3xl font-black text-sahay-navy-950">
-            {language === "hi"
+            {language === "en"
+              ? "Verified Government Schemes Explorer"
+              : language === "hi"
               ? "सत्यापित सरकारी योजनाओं का विस्तृत संग्रह"
-              : "Verified Government Schemes Explorer"}
+              : t.detailedMode.searchPlaceholder.split("...")[0]}
           </h1>
           <p className="text-sm text-sahay-warm-800">
-            {language === "hi"
+            {language === "en"
+              ? "Inspect criteria breakdown, required document matrices, and direct application links."
+              : language === "hi"
               ? "प्रत्येक योजना की पात्रता नियम, दस्तावेज और सरकारी आवेदन लिंक का पूरा ब्योरा।"
-              : "Inspect criteria breakdown, required document matrices, and direct application links."}
+              : t.landing.trustNote}
           </p>
         </div>
 
@@ -166,9 +113,8 @@ export default function DetailedModePage() {
             aria-label={t.detailedMode.filterCategory}
           >
             <option value="ALL">{t.detailedMode.allCategories}</option>
-            <option value="agriculture">कृषि एवं किसान (Agriculture)</option>
-            <option value="healthcare">स्वास्थ्य एवं चिकित्सा (Healthcare)</option>
-            <option value="women_child">महिला एवं बाल विकास (Women & Child)</option>
+            <option value="cash_transfer">Direct Cash Transfer / DBT</option>
+            <option value="insurance">Health / Insurance</option>
           </select>
         </div>
 
@@ -200,18 +146,19 @@ export default function DetailedModePage() {
       {/* Scheme Cards Grid */}
       <div className="grid grid-cols-1 gap-6">
         {filteredSchemes.map((scheme) => {
-          const SchemeIcon = scheme.icon;
+          const SchemeIcon = scheme.slug === "pm-kisan" ? Wheat : scheme.slug === "pm-jay" ? HeartPulse : Baby;
+          const iconColor = scheme.slug === "pm-kisan" ? "text-amber-700 bg-amber-50 border-amber-200" : scheme.slug === "pm-jay" ? "text-red-700 bg-red-50 border-red-200" : "text-purple-700 bg-purple-50 border-purple-200";
           return (
             <Card key={scheme.id} variant="default" className="border-2 border-sahay-warm-300 p-6 space-y-4">
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <div className={`p-3.5 rounded-2xl border ${scheme.iconColor}`}>
+                  <div className={`p-3.5 rounded-2xl border ${iconColor}`}>
                     <SchemeIcon className="w-8 h-8" />
                   </div>
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-sahay-navy-100 text-sahay-navy-900">
-                        {scheme.code}
+                        {scheme.officialCode}
                       </span>
                       <Badge variant="navy" size="sm">
                         {scheme.level === "central" ? t.common.centralScheme : t.common.stateScheme}
@@ -222,10 +169,10 @@ export default function DetailedModePage() {
                       </Badge>
                     </div>
                     <h3 className="text-xl sm:text-2xl font-black text-sahay-navy-950">
-                      {language === "hi" ? scheme.titleHi : scheme.titleEn}
+                      {getSchemeTitle(scheme, language)}
                     </h3>
                     <p className="text-xs text-sahay-warm-700 font-medium">
-                      {language === "hi" ? scheme.departmentHi : scheme.department}
+                      {getSchemeDepartment(scheme, language)}
                     </p>
                   </div>
                 </div>
@@ -233,17 +180,17 @@ export default function DetailedModePage() {
                 {/* Benefit Pill */}
                 <div className="p-3 bg-sahay-green-50 border border-sahay-green-200 rounded-xl text-left md:text-right flex-shrink-0">
                   <div className="text-xs text-sahay-green-900 font-medium">
-                    {language === "hi" ? "सरकारी लाभ" : "Government Benefit"}
+                    {language === "en" ? "Government Benefit" : "सरकारी लाभ"}
                   </div>
                   <div className="text-lg font-black text-sahay-green-800">
-                    {scheme.benefitAmount}
+                    {scheme.benefitAmountMax ? formatINR(scheme.benefitAmountMax) : getSchemeBenefitDescription(scheme, language)}
                   </div>
                 </div>
               </div>
 
               {/* Summary */}
               <p className="text-sm sm:text-base text-sahay-navy-900 leading-relaxed">
-                {language === "hi" ? scheme.summaryHi : scheme.summaryEn}
+                {getSchemeSummary(scheme, language)}
               </p>
 
               {/* Mandatory Documents Checklist preview */}
@@ -253,12 +200,12 @@ export default function DetailedModePage() {
                   <span>{t.detailedMode.documentsRequired}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {(language === "hi" ? scheme.mandatoryDocsHi : scheme.mandatoryDocs).map((doc, idx) => (
+                  {scheme.documents.map((doc) => (
                     <span
-                      key={idx}
+                      key={doc.id}
                       className="text-xs px-2.5 py-1 rounded-lg bg-white border border-sahay-warm-300 text-sahay-navy-900 font-medium"
                     >
-                      ✓ {doc}
+                      ✓ {getDocumentName(doc, language)}
                     </span>
                   ))}
                 </div>
@@ -267,12 +214,17 @@ export default function DetailedModePage() {
               {/* Card Actions */}
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-sahay-warm-200">
                 <span className="text-xs text-sahay-warm-700">
-                  {t.detailedMode.verifiedOn}: <span className="font-mono">{scheme.verifiedDate}</span>
+                  {t.detailedMode.verifiedOn}: <span className="font-mono">{scheme.verifiedAt ? scheme.verifiedAt.split("T")[0] : "2026-08-15"}</span>
                 </span>
 
                 <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <Link href={`/detailed/${scheme.slug}`} className="w-full sm:w-auto">
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto min-h-[44px]">
+                      <span>{t.detailedMode.viewChecklist}</span>
+                    </Button>
+                  </Link>
                   <a
-                    href={scheme.officialUrl}
+                    href={scheme.officialPortalUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full sm:w-auto"

@@ -13,6 +13,7 @@ export interface ExtractionResult {
 
 // Indian state keyword mappings
 const STATE_MAP: Record<string, string> = {
+  // Hindi & English
   हरियाणा: "IN-HR",
   haryana: "IN-HR",
   "उत्तर प्रदेश": "IN-UP",
@@ -31,7 +32,58 @@ const STATE_MAP: Record<string, string> = {
   punjab: "IN-PB",
   महाराष्ट्र: "IN-MH",
   maharashtra: "IN-MH",
+  गुजरात: "IN-GJ",
+  gujarat: "IN-GJ",
+  "पश्चिम बंगाल": "IN-WB",
+  bengal: "IN-WB",
+  "west bengal": "IN-WB",
+  পশ্চিমবঙ্গ: "IN-WB",
+  தமிழ்நாடு: "IN-TN",
+  "tamil nadu": "IN-TN",
+  ஆந்திரா: "IN-AP",
+  ఆంధ్రప్రదేశ్: "IN-AP",
+  "andhra pradesh": "IN-AP",
+  తెలంగాణ: "IN-TG",
+  telangana: "IN-TG",
+  ಕರ್ನಾಟಕ: "IN-KA",
+  karnataka: "IN-KA",
+  കേരളം: "IN-KL",
+  kerala: "IN-KL",
+  ଓଡ଼ିଶା: "IN-OR",
+  odisha: "IN-OR",
+  ਪੰਜਾਬ: "IN-PB",
+  مہاراشٹر: "IN-MH",
 };
+
+// Multilingual occupation keywords
+const FARMER_KEYWORDS = [
+  "किसान", "खेती", "kisan", "farmer", "agriculture", "কৃষক", "চাষ", "விவசாயி", "రైతు",
+  "शेतकरी", "ખેડૂત", "ರೈತ", "കർഷകൻ", "କୃଷକ", "ଚାଷୀ", "کسان", "کھیتی"
+];
+
+const DAILY_WAGE_KEYWORDS = [
+  "मजदूर", "मजदूरी", "दिहाड़ी", "daily wage", "labor", "labour", "দিনমজুর", "கூலி",
+  "కూలీ", "मजूर", "મજૂર", "ದಿನಗೂಲಿ", "തൊഴിലാളി", "ਦਿਹਾੜੀ", "ଦିନମଜୁରି", "مزدور"
+];
+
+const VENDOR_KEYWORDS = [
+  "रेहड़ी", "दुकान", "ठेला", "vendor", "shop", "দোকান", "வியாபாரி", "వ్యాపారి",
+  "दुकानदार", "દુકાનદાર", "ಅಂಗಡಿ", "വ്യാപാരി", "ਦੁਕਾਨਦਾਰ", "ଦୋକାନୀ", "دکاندار"
+];
+
+const STUDENT_KEYWORDS = [
+  "छात्र", "विद्यार्थी", "student", "study", "ছাত্র", "மாணவர்", "విద్యార్థి",
+  "ವಿದ್ಯಾರ್ಥಿ", "വിദ്യാർത്ഥി", "ਵਿਦਿਆਰਥੀ", "ଛାତ୍ର", "طالب علم"
+];
+
+const PREGNANT_KEYWORDS = [
+  "गर्भवती", "pregnant", "स्तनपान", "दूध पिलाती", "बच्चा होने वाला", "গর্ভবতী",
+  "கர்ப்பிணி", "గర్భిణీ", "गरोदर", "સગર્ભા", "ಗರ್ಭಿಣಿ", "ഗർഭിണി", "ਗਰਭਵਤੀ", "ଗର୍ଭବତୀ", "حاملہ"
+];
+
+const FEMALE_KEYWORDS = [
+  "महिला", "औरत", "female", "woman", "स्त्री", "মহিলা", "பெண்", "మహిళ", "സ്ത്രീ", "ਮਹਿਲਾ", "ମହିଳା", "خاتون"
+];
 
 /**
  * Deterministic local fallback extractor.
@@ -54,70 +106,70 @@ export function extractProfileDeterministic(
     }
   }
 
-  // 2. Occupation detection
-  if (
-    text.includes("किसान") ||
-    text.includes("खेती") ||
-    text.includes("kisan") ||
-    text.includes("farmer") ||
-    text.includes("कृषि")
-  ) {
+  // 2. Occupation detection (Multilingual)
+  if (FARMER_KEYWORDS.some((kw) => text.includes(kw))) {
     profile.occupation = "farmer";
     extractedFields.push("occupation");
-  } else if (
-    text.includes("मजदूर") ||
-    text.includes("मजदूरी") ||
-    text.includes("दिहाड़ी") ||
-    text.includes("daily wage") ||
-    text.includes("labor")
-  ) {
+  } else if (DAILY_WAGE_KEYWORDS.some((kw) => text.includes(kw))) {
     profile.occupation = "daily_wage_worker";
     extractedFields.push("occupation");
-  } else if (
-    text.includes("रेहड़ी") ||
-    text.includes("दुकान") ||
-    text.includes("ठेला") ||
-    text.includes("vendor") ||
-    text.includes("shop")
-  ) {
+  } else if (VENDOR_KEYWORDS.some((kw) => text.includes(kw))) {
     profile.occupation = "street_vendor";
     extractedFields.push("occupation");
-  } else if (
-    text.includes("छात्र") ||
-    text.includes("विद्यार्थी") ||
-    text.includes("student") ||
-    text.includes("पढ़ाई")
-  ) {
+  } else if (STUDENT_KEYWORDS.some((kw) => text.includes(kw))) {
     profile.occupation = "student";
     extractedFields.push("occupation");
   }
 
-  // 3. Landholding detection (Acres)
-  const landRegex = /(\d+(?:\.\d+)?)\s*(?:एकड़|एकर|acre|acres|किले|किला)/i;
-  const landMatch = text.match(landRegex);
+  // Helper to convert Indian numeric words/digits across scripts
+  const normalizeDigits = (str: string) => {
+    return str
+      .replace(/[০-৯]/g, (d) => String(d.charCodeAt(0) - 2534)) // Bengali
+      .replace(/[౦-౯]/g, (d) => String(d.charCodeAt(0) - 3168)) // Telugu
+      .replace(/[௦-௯]/g, (d) => String(d.charCodeAt(0) - 3040)) // Tamil
+      .replace(/[೦-೯]/g, (d) => String(d.charCodeAt(0) - 3302)) // Kannada
+      .replace(/[൦-൯]/g, (d) => String(d.charCodeAt(0) - 3430)) // Malayalam
+      .replace(/[੦-੯]/g, (d) => String(d.charCodeAt(0) - 2672)) // Gurmukhi
+      .replace(/[୦-୯]/g, (d) => String(d.charCodeAt(0) - 2918)) // Odia
+      .replace(/[૦-૯]/g, (d) => String(d.charCodeAt(0) - 2790)) // Gujarati
+      .replace(/[०-९]/g, (d) => String(d.charCodeAt(0) - 2406)); // Devanagari
+  };
+
+  const normalizedText = normalizeDigits(text);
+
+  // 3. Landholding detection (Acres) - Multilingual
+  const landRegex = /(\d+(?:\.\d+)?)\s*(?:एकड़|एकर|acre|acres|किले|किला|একর|ஏக்கர்|ఎకరాలు|ఎకరాల|ಎಕರೆ|ഏക്കർ|ਏਕੜ|ଏକର|ایکڑ)/i;
+  const landMatch = normalizedText.match(landRegex);
   if (landMatch) {
     profile.landholdingAcres = parseFloat(landMatch[1]);
     extractedFields.push("landholdingAcres");
-  } else if (text.includes("जमीन नहीं") || text.includes("landless") || text.includes("भूमिहीन")) {
+  } else if (
+    text.includes("जमीन नहीं") ||
+    text.includes("landless") ||
+    text.includes("ভূমিহীন") ||
+    text.includes("நிலமில்லை") ||
+    text.includes("భూమి లేదు") ||
+    text.includes("જમીન નથી")
+  ) {
     profile.landholdingAcres = 0;
     extractedFields.push("landholdingAcres");
   }
 
-  // 4. Income detection (Handling हज़ार, लाख, Lakh, k)
-  const lakhRegex = /(\d+(?:\.\d+)?)\s*(?:लाख|lakh|lac)/i;
-  const lakhMatch = text.match(lakhRegex);
+  // 4. Income detection (Handling Lakh, Thousand across languages)
+  const lakhRegex = /(\d+(?:\.\d+)?)\s*(?:लाख|lakh|lac|লাখ|லட்சம்|లక్ష|લાખ|ಲಕ್ಷ|ലക്ഷം|ਲੱਖ|ଲକ୍ଷ|لاکھ)/i;
+  const lakhMatch = normalizedText.match(lakhRegex);
   if (lakhMatch) {
     profile.annualHouseholdIncome = parseFloat(lakhMatch[1]) * 100000;
     extractedFields.push("annualHouseholdIncome");
   } else {
-    const hazarRegex = /(\d+(?:\.\d+)?)\s*(?:हज़ार|हजार|thousand|k)/i;
-    const hazarMatch = text.match(hazarRegex);
+    const hazarRegex = /(\d+(?:\.\d+)?)\s*(?:हज़ार|हजार|thousand|k|হাজার|ஆயிரம்|వేల|हजार|હજાર|ಸಾವಿರ|ആയിരം|ਹਜ਼ਾਰ|ହଜାର|ہزار)/i;
+    const hazarMatch = normalizedText.match(hazarRegex);
     if (hazarMatch) {
       profile.annualHouseholdIncome = parseFloat(hazarMatch[1]) * 1000;
       extractedFields.push("annualHouseholdIncome");
     } else {
-      const rawNumIncomeRegex = /(?:कमाई|आय|income|कमाते|कमा लेता)\D{0,10}(\d{4,7})/i;
-      const rawMatch = text.match(rawNumIncomeRegex);
+      const rawNumIncomeRegex = /(?:कमाई|आय|income|कमाते|রোজগার|வருமானம்|ఆదాయం|ఉత్పన్న|આવક|ಆದಾಯ|വരുമാനം|ਕਮਾਈ|ଆୟ|آمدنی)\D{0,15}(\d{4,7})/i;
+      const rawMatch = normalizedText.match(rawNumIncomeRegex);
       if (rawMatch) {
         profile.annualHouseholdIncome = parseInt(rawMatch[1], 10);
         extractedFields.push("annualHouseholdIncome");
@@ -125,9 +177,9 @@ export function extractProfileDeterministic(
     }
   }
 
-  // 5. Age detection
-  const ageRegex = /(\d{1,2})\s*(?:साल|वर्ष|years|year|उम्र|age)/i;
-  const ageMatch = text.match(ageRegex);
+  // 5. Age detection - Multilingual
+  const ageRegex = /(\d{1,2})\s*(?:साल|वर्ष|years|year|उम्र|age|বছর|வயது|సంవత్సరాలు|ವರ್ಷ|വയസ്സ്|ਸਾਲ|ବର୍ଷ|سال)/i;
+  const ageMatch = normalizedText.match(ageRegex);
   if (ageMatch) {
     const ageVal = parseInt(ageMatch[1], 10);
     if (ageVal >= 1 && ageVal <= 110) {
@@ -136,31 +188,27 @@ export function extractProfileDeterministic(
     }
   }
 
-  // 6. Gender & Maternity detection
-  if (
-    text.includes("गर्भवती") ||
-    text.includes("pregnant") ||
-    text.includes("स्तनपान") ||
-    text.includes("दूध पिलाती") ||
-    text.includes("बच्चा होने वाला")
-  ) {
+  // 6. Gender & Maternity detection - Multilingual
+  if (PREGNANT_KEYWORDS.some((kw) => text.includes(kw))) {
     profile.gender = "female";
     profile.isPregnantOrLactating = true;
     extractedFields.push("gender", "isPregnantOrLactating");
-  } else if (
-    text.includes("महिला") ||
-    text.includes("औरत") ||
-    text.includes("female") ||
-    text.includes("woman") ||
-    text.includes("स्त्री")
-  ) {
+  } else if (FEMALE_KEYWORDS.some((kw) => text.includes(kw))) {
     profile.gender = "female";
     extractedFields.push("gender");
   } else if (
     text.includes("पुरुष") ||
     text.includes("आदमी") ||
     text.includes("male") ||
-    text.includes("man")
+    text.includes("man") ||
+    text.includes("পুরুষ") ||
+    text.includes("ஆண்") ||
+    text.includes("పురుషుడు") ||
+    text.includes("ಪುರುಷ") ||
+    text.includes("പുരുഷൻ") ||
+    text.includes("ਪੁਰਸ਼") ||
+    text.includes("ପୁରୁଷ") ||
+    text.includes("مرد")
   ) {
     profile.gender = "male";
     extractedFields.push("gender");

@@ -30,6 +30,14 @@ import {
   Baby,
   ShieldCheck,
 } from "lucide-react";
+import {
+  getSchemeTitle,
+  getSchemeSummary,
+  getSchemeDepartment,
+  getSchemeBenefitDescription,
+  getDocumentName,
+  getRuleExplanation,
+} from "@/core/languages/scheme-localization";
 
 export default function SimpleModePage() {
   const { t, language } = useApp();
@@ -47,19 +55,154 @@ export default function SimpleModePage() {
   // Quick preset voice phrases for easy testing / quick tapping
   const quickPresets = [
     {
-      labelHi: "मैं हरियाणा का किसान हूँ, 2 एकड़ जमीन है और 80 हज़ार कमाता हूँ।",
-      labelEn: "I am a farmer from Haryana with 2 acres of land earning ₹80,000.",
-      transcript: "मैं हरियाणा से हूँ, खेती करता हूँ, 2 एकड़ जमीन है और सालाना 80 हज़ार कमाता हूँ।",
+      label:
+        language === "bn"
+          ? "আমি পশ্চিমবঙ্গের কৃষক, ২ একর জমি আছে এবং বছরে ৮০ হাজার টাকা আয়।"
+          : language === "ta"
+          ? "நான் தமிழ்நாட்டைச் சேர்ந்த விவசாயி, 2 ஏக்கர் நிலம் உள்ளது, ஆண்டு வருமானம் ₹80,000."
+          : language === "te"
+          ? "నేను ఆంధ్రప్రదేశ్ రైతును, 2 ఎకరాల భూమి ఉంది, వార్షిక ఆదాయం ₹80,000."
+          : language === "mr"
+          ? "मी महाराष्ट्रातील शेतकरी आहे, २ एकर जमीन आहे आणि वार्षिक उत्पन्न ८० हजार आहे."
+          : language === "gu"
+          ? "હું ગુજરાતનો ખેડૂત છું, ૨ એકર જમીન છે અને વાર્ષિક આવક ૮૦ હજાર છે."
+          : language === "kn"
+          ? "ನಾನು ಕರ್ನಾಟಕದ ರೈತ, 2 ಎಕರೆ ಜಮೀನು ಇದೆ ಮತ್ತು ವಾರ್ಷಿಕ ಆದಾಯ ₹80,000."
+          : language === "ml"
+          ? "ഞാൻ കേരളത്തിലെ കർഷകനാണ്, 2 ഏക്കർ ഭൂമിയുണ്ട്, വാർഷിക വരുമാനം ₹80,000."
+          : language === "pa"
+          ? "ਮੈਂ ਪੰਜਾਬ ਦਾ ਕਿਸਾਨ ਹਾਂ, 2 ਏਕੜ ਜ਼ਮੀਨ ਹੈ ਅਤੇ ਸਾਲਾਨਾ 80 ਹਜ਼ਾਰ ਕਮਾਉਂਦਾ ਹਾਂ।"
+          : language === "or"
+          ? "ମୁଁ ଓଡ଼ିଶାର ଚାଷୀ, ୨ ଏକର ଜମି ଅଛି ଏବଂ ବାର୍ଷିକ ଆୟ ୮୦ ହଜାର।"
+          : language === "ur"
+          ? "میں کسان ہوں، 2 ایکڑ زمین ہے اور سالانہ آمدنی 80 ہزار ہے۔"
+          : language === "en"
+          ? "I am a farmer from Haryana with 2 acres of land earning ₹80,000."
+          : "मैं हरियाणा का किसान हूँ, 2 एकड़ जमीन है और 80 हज़ार कमाता हूँ।",
+      transcript:
+        language === "bn"
+          ? "আমি কৃষক, ২ একর চাষের জমি আছে এবং বছরে ৮০ হাজার টাকা আয়।"
+          : language === "ta"
+          ? "நான் விவசாயி, 2 ஏக்கர் விவசாய நிலம் உள்ளது மற்றும் ஆண்டு வருமானம் 80000."
+          : language === "te"
+          ? "నేను రైతును, 2 ఎకరాల వ్యవసాయ భూమి ఉంది మరియు వార్షిక ఆదాయం 80000."
+          : language === "mr"
+          ? "मी शेतकरी आहे, २ एकर शेतीची जमीन आहे आणि वार्षिक कमाई ८० हजार आहे."
+          : language === "gu"
+          ? "હું ખેડૂત છું, ૨ એકર જમીન છે અને વાર્ષિક આવક ૮૦ હજાર છે."
+          : language === "kn"
+          ? "ನಾನು ರೈತ, 2 ಎಕರೆ ಕೃಷಿ ಜಮೀನು ಇದೆ ಮತ್ತು ವಾರ್ಷಿಕ ಆದಾಯ 80000."
+          : language === "ml"
+          ? "ഞാൻ കർഷകനാണ്, 2 ഏക്കർ കൃഷിഭൂമിയുണ്ട്, വാർഷിക വരുമാനം 80000."
+          : language === "pa"
+          ? "ਮੈਂ ਕਿਸਾਨ ਹਾਂ, 2 ਏਕੜ ਜ਼ਮੀਨ ਹੈ ਅਤੇ ਸਾਲਾਨਾ 80 ਹਜ਼ਾਰ ਕਮਾਈ ਹੈ।"
+          : language === "or"
+          ? "ମୁଁ ଚାଷୀ, ୨ ଏକର ଚାଷଜମି ଅଛି ଏବଂ ବାର୍ଷିକ ଆୟ ୮୦ ହଜାର।"
+          : language === "ur"
+          ? "میں کسان ہوں، 2 ایکڑ زمین ہے اور سالانہ 80 ہزار کماتا ہوں۔"
+          : language === "en"
+          ? "I live in Haryana, work as a farmer, have 2 acres land and earn 80000."
+          : "मैं हरियाणा से हूँ, खेती करता हूँ, 2 एकड़ जमीन है और सालाना 80 हज़ार कमाता हूँ।",
     },
     {
-      labelHi: "गर्भवती महिला, उम्र 24 वर्ष, उत्तर प्रदेश से।",
-      labelEn: "Pregnant woman, age 24, from Uttar Pradesh.",
-      transcript: "मैं उत्तर प्रदेश से महिला हूँ, मेरी उम्र 24 साल है और मैं गर्भवती हूँ।",
+      label:
+        language === "bn"
+          ? "গর্ভবতী মহিলা, বয়স ২৪ বছর।"
+          : language === "ta"
+          ? "கர்ப்பிணிப் பெண், வயது 24."
+          : language === "te"
+          ? "గర్భిణీ స్త్రీ, వయస్సు 24 సంవత్సరాలు."
+          : language === "mr"
+          ? "गरोदर महिला, वय २४ वर्षे."
+          : language === "gu"
+          ? "સગર્ભા સ્ત્રી, ઉંમર ૨૪ વર્ષ."
+          : language === "kn"
+          ? "ಗರ್ಭಿಣಿ ಮಹಿಳೆ, ವಯಸ್ಸು 24 ವರ್ಷ."
+          : language === "ml"
+          ? "ഗർഭിണിയായ സ്ത്രീ, പ്രായം 24 വയസ്സ്."
+          : language === "pa"
+          ? "ਗਰਭਵਤੀ ਔਰਤ, ਉਮਰ 24 ਸਾਲ।"
+          : language === "or"
+          ? "ଗର୍ଭବତୀ ମହିଳା, ବୟସ ୨୪ ବର୍ଷ।"
+          : language === "ur"
+          ? "حاملہ خاتون، عمر 24 سال۔"
+          : language === "en"
+          ? "Pregnant woman, age 24."
+          : "गर्भवती महिला, उम्र 24 वर्ष।",
+      transcript:
+        language === "bn"
+          ? "আমি মহিলা, আমার বয়স ২৪ বছর এবং আমি গর্ভবতী।"
+          : language === "ta"
+          ? "நான் பெண், என் வயது 24 மற்றும் நான் கர்ப்பிணி."
+          : language === "te"
+          ? "నేను మహిళను, నా వయస్సు 24 సంవత్సరాలు మరియు నేను గర్భిణీని."
+          : language === "mr"
+          ? "मी महिला आहे, माझे वय २४ वर्षे आहे आणि मी गरोदर आहे."
+          : language === "gu"
+          ? "હું મહિલા છું, મારી ઉંમર ૨૪ વર્ષ છે અને હું સગર્ભા છું."
+          : language === "kn"
+          ? "ನಾನು ಮಹಿಳೆ, ನನ್ನ ವಯಸ್ಸು 24 ವರ್ಷ ಮತ್ತು ನಾನು ಗರ್ಭಿಣಿ."
+          : language === "ml"
+          ? "ഞാൻ സ്ത്രീയാണ്, എന്റെ പ്രായം 24 വയസ്സ്, ഞാൻ ഗർഭിണിയാണ്."
+          : language === "pa"
+          ? "ਮੈਂ ਔਰਤ ਹਾਂ, ਮੇਰੀ ਉਮਰ 24 ਸਾਲ ਹੈ ਅਤੇ ਮੈਂ ਗਰਭਵਤੀ ਹਾਂ।"
+          : language === "or"
+          ? "ମୁଁ ମହିଳା, ମୋର ବୟସ ୨୪ ବର୍ଷ ଏବଂ ମୁଁ ଗର୍ଭବତୀ।"
+          : language === "ur"
+          ? "میں خاتون ہوں، میری عمر 24 سال ہے اور میں حاملہ ہوں۔"
+          : language === "en"
+          ? "I am a female, my age is 24 years and I am pregnant."
+          : "मैं उत्तर प्रदेश से महिला हूँ, मेरी उम्र 24 साल है और मैं गर्भवती हूँ।",
     },
     {
-      labelHi: "दैनिक मजदूर, दिल्ली में रहता हूँ, आय 1.2 लाख।",
-      labelEn: "Daily wage worker living in Delhi, annual income ₹1.2 Lakh.",
-      transcript: "मैं दिल्ली में रहता हूँ, दिहाड़ी मजदूरी करता हूँ और पूरे साल में 1 लाख 20 हज़ार कमाता हूँ।",
+      label:
+        language === "bn"
+          ? "দিনমজুর, বার্ষিক আয় ১.২ লাখ।"
+          : language === "ta"
+          ? "தினக்கூலி தொழிலாளி, ஆண்டு வருமானம் ₹1.2 லட்சம்."
+          : language === "te"
+          ? "దినసరి కూలీ, వార్షిక ఆదాయం ₹1.2 లక్షలు."
+          : language === "mr"
+          ? "मजूर, वार्षिक उत्पन्न १.२ लाख."
+          : language === "gu"
+          ? "દૈનિક મજૂર, વાર્ષિક આવક ૧.૨ લાખ."
+          : language === "kn"
+          ? "ದಿನಗೂಲಿ ಕಾರ್ಮಿಕ, ವಾರ್ಷಿಕ ಆದಾಯ ₹1.2 ಲಕ್ಷ."
+          : language === "ml"
+          ? "ദിവസവേതന തൊഴിലാളി, വാർഷിക വരുമാനം ₹1.2 ലക്ഷം."
+          : language === "pa"
+          ? "ਦਿਹਾੜੀਦਾਰ ਮਜ਼ਦੂਰ, ਸਾਲਾਨਾ ਆਮਦਨ 1.2 ਲੱਖ।"
+          : language === "or"
+          ? "ଦିନମଜୁରିଆ, ବାର୍ଷିକ ଆୟ ୧.୨ ଲକ୍ଷ।"
+          : language === "ur"
+          ? "دیہاڑی دار مزدور، سالانہ آمدنی 1.2 لاکھ۔"
+          : language === "en"
+          ? "Daily wage worker, annual income ₹1.2 Lakh."
+          : "दैनिक मजदूर, आय 1.2 लाख।",
+      transcript:
+        language === "bn"
+          ? "আমি দিনমজুরি করি এবং বছরে ১ লাখ ২০ হাজার টাকা আয় করি।"
+          : language === "ta"
+          ? "நான் தினக்கூலி வேலை செய்கிறேன், ஆண்டு வருமானம் 120000."
+          : language === "te"
+          ? "నేను దినసరి కూలీని, ఏడాదికి 120000 సంపాదిస్తాను."
+          : language === "mr"
+          ? "मी मजुरी करतो आणि वर्षाला १ लाख २० हजार कमावतो."
+          : language === "gu"
+          ? "હું મજૂરી કરું છું અને વાર્ષિક ૧ લાખ ૨૦ હજાર કમાઉં છું."
+          : language === "kn"
+          ? "ನಾನು ದಿನಗೂಲಿ ಕೆಲಸ ಮಾಡುತ್ತೇನೆ, ವಾರ್ಷಿಕ 120000 ಆದಾಯವಿದೆ."
+          : language === "ml"
+          ? "ഞാൻ ദിവസവേതന തൊഴിലാളിയാണ്, വർഷത്തിൽ 120000 വരുമാനമുണ്ട്."
+          : language === "pa"
+          ? "ਮੈਂ ਦਿਹਾੜੀ ਮਜ਼ਦૂਰੀ ਕਰਦਾ ਹਾਂ ਅਤੇ ਸਾਲਾਨਾ 1 ਲੱਖ 20 ਹਜ਼ਾਰ ਕਮਾਉਂਦਾ ਹਾਂ।"
+          : language === "or"
+          ? "ମୁଁ ଦିନମଜୁରି କରେ ଏବଂ ବର୍ଷକୁ ୧ ଲକ୍ଷ ୨୦ ହଜାର ରୋଜଗାର କରେ।"
+          : language === "ur"
+          ? "میں دیہاڑی مزدوری کرتا ہوں اور سالانہ 1 لاکھ 20 ہزار کماتا ہوں۔"
+          : language === "en"
+          ? "I work as a daily wage worker and earn 120000 per year."
+          : "मैं दिल्ली में रहता हूँ, दिहाड़ी मजदूरी करता हूँ और पूरे साल में 1 लाख 20 हज़ार कमाता हूँ।",
     },
   ];
 
@@ -144,9 +287,9 @@ export default function SimpleModePage() {
               </span>
               <ReadAloudButton
                 textToRead={
-                  language === "hi"
-                    ? "नमस्ते! आप अपने बारे में बोलकर बताएं। जैसे आप कहां रहते हैं, क्या काम करते हैं और कितनी कमाई है।"
-                    : "Namaste! Speak naturally about where you live, what work you do, and your income."
+                  language === "en"
+                    ? "Namaste! Speak naturally about where you live, what work you do, and your income."
+                    : `${t.simpleMode.welcomeTitle} ${t.simpleMode.welcomeSubtitle}`
                 }
               />
             </div>
@@ -155,9 +298,7 @@ export default function SimpleModePage() {
               {t.simpleMode.welcomeTitle}
             </CardTitle>
             <CardDescription className="text-base text-sahay-warm-900">
-              {language === "hi"
-                ? "माइक बटन दबाएं और अपनी स्थिति बोलकर बताएं — जैसे आपका राज्य, आपका काम, जमीन या पारिवारिक आय।"
-                : "Tap the microphone and speak your situation — like your state, work, land, or family income."}
+              {t.simpleMode.welcomeSubtitle}
             </CardDescription>
           </CardHeader>
 
@@ -208,7 +349,7 @@ export default function SimpleModePage() {
             {/* Example Presets for 1-Tap Convenience */}
             <div className="space-y-3 pt-2 border-t border-sahay-warm-200">
               <span className="text-xs font-bold text-sahay-warm-700 uppercase tracking-wider">
-                {language === "hi" ? "त्वरित उदाहरण (छूकर चुनें):" : "Quick Examples (Tap to test):"}
+                {language === "en" ? "Quick Examples (Tap to test):" : "त्वरित उदाहरण (छूकर चुनें):"}
               </span>
               <div className="space-y-2">
                 {quickPresets.map((preset, idx) => (
@@ -218,7 +359,7 @@ export default function SimpleModePage() {
                     onClick={() => handleTranscriptReceived(preset.transcript)}
                     className="w-full text-left p-3.5 rounded-xl border border-sahay-warm-300 bg-sahay-warm-50 hover:bg-sahay-warm-100 hover:border-sahay-navy-600 transition-all text-sm font-medium text-sahay-navy-900 flex items-center justify-between"
                   >
-                    <span>{language === "hi" ? preset.labelHi : preset.labelEn}</span>
+                    <span>{preset.label}</span>
                     <Sparkles className="w-4 h-4 text-sahay-saffron-600 flex-shrink-0 ml-2" />
                   </button>
                 ))}
@@ -454,10 +595,10 @@ export default function SimpleModePage() {
                       </div>
 
                       <h3 className="text-xl sm:text-2xl font-black text-sahay-navy-950">
-                        {language === "hi" ? res.scheme.titleHi : res.scheme.titleEn}
+                        {getSchemeTitle(res.scheme, language)}
                       </h3>
                       <p className="text-xs text-sahay-warm-700 font-medium">
-                        {res.scheme.department}
+                        {getSchemeDepartment(res.scheme, language)}
                       </p>
                     </div>
 
@@ -465,7 +606,7 @@ export default function SimpleModePage() {
                     {res.scheme.benefitAmountMax && (
                       <div className="p-3 bg-sahay-green-100/70 border border-sahay-green-300 rounded-xl text-left sm:text-right flex-shrink-0">
                         <div className="text-xs text-sahay-green-950 font-semibold">
-                          {language === "hi" ? "योजना का लाभ:" : "Benefit Amount:"}
+                          {language === "en" ? "Benefit Amount:" : "योजना का लाभ:"}
                         </div>
                         <div className="text-xl font-black text-sahay-green-800">
                           {formatINR(res.scheme.benefitAmountMax)}
@@ -482,23 +623,27 @@ export default function SimpleModePage() {
                       </span>
                       <ReadAloudButton
                         textToRead={
-                          language === "hi" ? res.rationaleSummaryHi : res.rationaleSummaryEn
+                          language === "en" ? res.rationaleSummaryEn : res.rationaleSummaryHi
                         }
                       />
                     </div>
                     <p className="text-sm sm:text-base font-semibold text-sahay-navy-900">
-                      {language === "hi" ? res.rationaleSummaryHi : res.rationaleSummaryEn}
+                      {language === "en" ? res.rationaleSummaryEn : res.rationaleSummaryHi}
                     </p>
 
                     {/* List of passed criteria */}
                     {res.passedCriteria.length > 0 && (
                       <div className="pt-1 space-y-1">
-                        {res.passedCriteria.map((c, i) => (
-                          <div key={i} className="text-xs text-sahay-green-900 flex items-center gap-1.5 font-medium">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-sahay-green-700 flex-shrink-0" />
-                            <span>{language === "hi" ? c.explanationHi : c.explanationEn}</span>
-                          </div>
-                        ))}
+                        {res.passedCriteria.map((c, i) => {
+                          const matchedRule = res.scheme.rules.find((r) => r.id === c.ruleId);
+                          const expl = matchedRule ? getRuleExplanation(matchedRule, language) : (language === "en" ? c.explanationEn : c.explanationHi);
+                          return (
+                            <div key={i} className="text-xs text-sahay-green-900 flex items-center gap-1.5 font-medium">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-sahay-green-700 flex-shrink-0" />
+                              <span>{expl}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
@@ -508,12 +653,16 @@ export default function SimpleModePage() {
                         <span className="text-xs font-bold text-amber-900">
                           {t.simpleMode.missingInfoTitle}:
                         </span>
-                        {res.missingCriteria.map((m, i) => (
-                          <div key={i} className="text-xs text-amber-800 flex items-center gap-1.5 font-medium">
-                            <HelpCircle className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
-                            <span>{language === "hi" ? m.explanationHi : m.explanationEn}</span>
-                          </div>
-                        ))}
+                        {res.missingCriteria.map((m, i) => {
+                          const matchedRule = res.scheme.rules.find((r) => r.id === m.ruleId);
+                          const expl = matchedRule ? getRuleExplanation(matchedRule, language) : (language === "en" ? m.explanationEn : m.explanationHi);
+                          return (
+                            <div key={i} className="text-xs text-amber-800 flex items-center gap-1.5 font-medium">
+                              <HelpCircle className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
+                              <span>{expl}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -522,7 +671,7 @@ export default function SimpleModePage() {
                   <div className="space-y-2">
                     <div className="text-xs font-bold text-sahay-navy-950 uppercase tracking-wider flex items-center gap-1.5">
                       <FileCheck className="w-4 h-4 text-sahay-navy-800" />
-                      <span>{language === "hi" ? "जरूरी सरकारी दस्तावेज:" : "Required Official Documents:"}</span>
+                      <span>{t.detailedMode.documentsRequired}</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {res.scheme.documents.map((doc) => (
@@ -530,7 +679,7 @@ export default function SimpleModePage() {
                           key={doc.id}
                           className="text-xs px-2.5 py-1 rounded-lg bg-white border border-sahay-warm-300 text-sahay-navy-900 font-medium"
                         >
-                          ✓ {language === "hi" ? doc.nameHi : doc.nameEn}
+                          ✓ {getDocumentName(doc, language)}
                         </span>
                       ))}
                     </div>

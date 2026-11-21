@@ -51,4 +51,42 @@ describe("Deterministic Profile Extractor", () => {
     expect(result.missingCriticalFields).toContain("landholdingAcres");
     expect(result.suggestedFollowUp?.field).toBe("landholdingAcres");
   });
+
+  it("extracts state, farmer, land, and income in Bengali", () => {
+    const transcript = "আমি পশ্চিমবঙ্গ এর কৃষক, ২ একর জমি আছে এবং বছরে ৮০ হাজার টাকা রোজগার।";
+    const result = extractProfileDeterministic(transcript, DefaultCitizenProfile);
+
+    expect(result.profile.state).toBe("IN-WB");
+    expect(result.profile.occupation).toBe("farmer");
+    expect(result.profile.landholdingAcres).toBe(2);
+    expect(result.profile.annualHouseholdIncome).toBe(80000);
+  });
+
+  it("extracts pregnant female, age, and Tamil Nadu in Tamil", () => {
+    const transcript = "நான் தமிழ்நாடு, 24 வயது பெண், கர்ப்பிணி.";
+    const result = extractProfileDeterministic(transcript, DefaultCitizenProfile);
+
+    expect(result.profile.state).toBe("IN-TN");
+    expect(result.profile.gender).toBe("female");
+    expect(result.profile.isPregnantOrLactating).toBe(true);
+    expect(result.profile.age).toBe(24);
+  });
+
+  it("extracts farmer and land in Telugu", () => {
+    const transcript = "నేను తెలంగాణ రైతును, 3 ఎకరాలు సాగు భూమి ఉంది.";
+    const result = extractProfileDeterministic(transcript, DefaultCitizenProfile);
+
+    expect(result.profile.state).toBe("IN-TG");
+    expect(result.profile.occupation).toBe("farmer");
+    expect(result.profile.landholdingAcres).toBe(3);
+  });
+
+  it("extracts daily wage worker and income in Marathi", () => {
+    const transcript = "मी महाराष्ट्र मध्ये मजूर आहे आणि वार्षिक कमाई १ लाख आहे.";
+    const result = extractProfileDeterministic(transcript, DefaultCitizenProfile);
+
+    expect(result.profile.state).toBe("IN-MH");
+    expect(result.profile.occupation).toBe("daily_wage_worker");
+    expect(result.profile.annualHouseholdIncome).toBe(100000);
+  });
 });
