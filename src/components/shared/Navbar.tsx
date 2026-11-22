@@ -44,22 +44,11 @@ export function Navbar() {
             href="/"
             className="flex items-center gap-3 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sahay-navy-700 rounded-xl p-1"
           >
-            <div className="w-12 h-12 rounded-2xl bg-sahay-navy-900 flex items-center justify-center text-white font-extrabold text-2xl shadow-sm border border-sahay-navy-800 group-hover:bg-sahay-navy-800 transition-colors">
-              <span className="text-sahay-saffron-400">स</span>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-black tracking-tight text-sahay-navy-950">
-                  SAHAY
-                </span>
-                <span className="text-sm font-semibold px-2 py-0.5 rounded-md bg-sahay-warm-200 text-sahay-navy-900">
-                  सहाय
-                </span>
-              </div>
-              <span className="text-xs text-sahay-warm-800 font-medium">
-                {t.common.tagline}
-              </span>
-            </div>
+            <img
+              src="/sahay-logo.png"
+              alt="Sahay Official Logo"
+              className="h-14 sm:h-16 w-auto object-contain rounded-xl hover:scale-105 transition-transform"
+            />
           </Link>
 
           {/* Controls: Mode Switch & Language Selector */}

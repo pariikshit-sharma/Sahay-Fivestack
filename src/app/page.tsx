@@ -40,6 +40,15 @@ export default function HomePage() {
       <section className="relative overflow-hidden bg-gradient-to-b from-white via-sahay-warm-50 to-sahay-warm-100 py-12 md:py-20 border-b border-sahay-warm-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center space-y-6">
+            {/* Official Logo Banner */}
+            <div className="flex justify-center pb-2">
+              <img
+                src="/sahay-logo.png"
+                alt="Sahay Official Logo"
+                className="h-28 sm:h-36 w-auto object-contain drop-shadow-md rounded-2xl"
+              />
+            </div>
+
             {/* National Initiative Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sahay-navy-100 border border-sahay-navy-200 text-sahay-navy-900 text-xs sm:text-sm font-semibold">
               <Landmark className="w-4 h-4 text-sahay-navy-800" />
