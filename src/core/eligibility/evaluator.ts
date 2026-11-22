@@ -9,14 +9,94 @@ import { CitizenProfile } from "@/types/citizen";
 import { evaluateComparator } from "./comparators";
 
 /**
+ * Normalizes different alias keys used across scheme rules into standard CitizenProfile keys
+ */
+export function getProfileValue(profile: CitizenProfile, criterionKey: string): any {
+  if (!profile) return null;
+
+  switch (criterionKey) {
+    case "annual_income":
+    case "annualHouseholdIncome":
+    case "income":
+      return profile.annualHouseholdIncome;
+
+    case "land_ownership":
+    case "landholding":
+      if (profile.landholdingAcres !== null) {
+        return profile.landholdingAcres > 0;
+      }
+      return null;
+
+    case "landholdingAcres":
+    case "land_size":
+    case "landSize":
+      return profile.landholdingAcres;
+
+    case "pregnant":
+    case "is_pregnant":
+    case "pregnancy":
+    case "isPregnantOrLactating":
+      return profile.isPregnantOrLactating;
+
+    case "state":
+    case "stateCode":
+      return profile.state;
+
+    case "age":
+      return profile.age;
+
+    case "gender":
+      return profile.gender;
+
+    case "occupation":
+      return profile.occupation;
+
+    case "socialCategory":
+    case "caste":
+      return profile.socialCategory;
+
+    case "hasDisability":
+    case "disability":
+      return profile.hasDisability;
+
+    case "bplCardHolder":
+    case "bpl":
+      return profile.bplCardHolder;
+
+    default:
+      return (profile as any)[criterionKey] ?? null;
+  }
+}
+
+/**
+ * Checks state/regional match with loose mapping (e.g. "IN-MP", "MP", "Madhya Pradesh")
+ */
+function isStateApplicable(applicableStates: string[], userState: string | null): boolean {
+  if (!applicableStates || applicableStates.length === 0 || applicableStates.includes("ALL")) {
+    return true;
+  }
+  if (!userState) return false;
+
+  const normalizedUser = userState.toLowerCase().replace("in-", "").trim();
+
+  return applicableStates.some((s) => {
+    const normSchemeState = s.toLowerCase().replace("in-", "").trim();
+    return (
+      normSchemeState === normalizedUser ||
+      normSchemeState.includes(normalizedUser) ||
+      normalizedUser.includes(normSchemeState)
+    );
+  });
+}
+
+/**
  * Pure, deterministic eligibility engine for SAHAY
- * Evaluates a citizen profile against verified scheme AST rules.
+ * Evaluates a citizen profile against verified scheme AST rules with intelligent alias resolution.
  */
 export function evaluateScheme(
   profile: CitizenProfile,
   scheme: Scheme
 ): SchemeEvaluationResult {
-  // 1. Check if scheme is verified; if not, return manual_verification
   if (scheme.verificationStatus !== "verified") {
     return {
       scheme,
@@ -32,11 +112,10 @@ export function evaluateScheme(
     };
   }
 
-  // 2. Geographic applicability check
+  // 1. Geographic applicability check
   const isPanIndia =
     scheme.applicableStates.includes("ALL") || scheme.applicableStates.length === 0;
-  const stateMatches =
-    isPanIndia || (profile.state && scheme.applicableStates.includes(profile.state));
+  const stateMatches = isPanIndia || isStateApplicable(scheme.applicableStates, profile.state);
 
   const allPassed: EvaluatedCriterion[] = [];
   const allFailed: EvaluatedCriterion[] = [];
@@ -86,7 +165,7 @@ export function evaluateScheme(
     });
   }
 
-  // 3. Group rules by ruleGroup (default group 1)
+  // 2. Group rules by ruleGroup (default group 1)
   const groupedRules: Record<number, EligibilityRule[]> = {};
   for (const rule of scheme.rules) {
     const g = rule.ruleGroup || 1;
@@ -94,7 +173,7 @@ export function evaluateScheme(
     groupedRules[g].push(rule);
   }
 
-  // 4. Evaluate each rule group
+  // 3. Evaluate each rule group
   const groupResults: Array<{
     group: number;
     passed: EvaluatedCriterion[];
@@ -110,7 +189,8 @@ export function evaluateScheme(
     const missing: EvaluatedCriterion[] = [];
 
     for (const rule of rules) {
-      const actualValue = (profile as any)[rule.criterionKey];
+      // Resolve using smart alias resolver
+      const actualValue = getProfileValue(profile, rule.criterionKey);
       const result = evaluateComparator(rule.operator, rule.targetValue, actualValue);
 
       const criterion: EvaluatedCriterion = {
@@ -155,16 +235,13 @@ export function evaluateScheme(
     allMissing.push(...gr.missing);
   }
 
-  // Determine final status
+  // 4. Determine final status
   let finalStatus: EligibilityStatus;
-
-  // Check if any rule group succeeded completely
   const anyGroupEligible = groupResults.some((g) => g.isEligible);
 
   if (anyGroupEligible && (!allMissing.some((m) => m.isMandatory) || isPanIndia || profile.state)) {
     finalStatus = "likely_eligible";
   } else {
-    // If every group has at least one mandatory failure
     const allGroupsHaveMandatoryFail = groupResults.every((g) =>
       g.failed.some((f) => f.isMandatory)
     );
@@ -172,14 +249,13 @@ export function evaluateScheme(
     if (allGroupsHaveMandatoryFail) {
       finalStatus = "not_eligible";
     } else if (allMissing.length > 0) {
-      // Missing info exists and could determine eligibility
       finalStatus = "needs_information";
     } else {
       finalStatus = "not_eligible";
     }
   }
 
-  // Formulate human rationale summary
+  // 5. Formulate human-readable rationale
   let rationaleSummaryEn = "";
   let rationaleSummaryHi = "";
 
@@ -199,10 +275,8 @@ export function evaluateScheme(
     rationaleSummaryHi = `वर्तमान नियमों के अनुसार: ${failReasonHi || "शर्त पूरी नहीं होती"}।`;
   }
 
-  // Confidence computation
-  const totalCriteria = allPassed.length + allFailed.length + allMissing.length;
-  const confidence =
-    totalCriteria > 0 ? Number(((allPassed.length + allFailed.length) / totalCriteria).toFixed(2)) : 1.0;
+  const totalRules = scheme.rules.length + (isPanIndia ? 0 : 1);
+  const confidence = totalRules > 0 ? (allPassed.length + allFailed.length) / totalRules : 1.0;
 
   return {
     scheme,
@@ -210,7 +284,7 @@ export function evaluateScheme(
     passedCriteria: allPassed,
     failedCriteria: allFailed,
     missingCriteria: allMissing,
-    confidence,
+    confidence: Math.round(confidence * 100) / 100,
     rationaleSummaryEn,
     rationaleSummaryHi,
   };
