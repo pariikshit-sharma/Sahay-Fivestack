@@ -1,16 +1,17 @@
 import { TextToSpeechAdapter } from "./types";
 
-export class WebSpeechSynthesisAdapter implements TextToSpeechAdapter {
-  private activeUtterance: SpeechSynthesisUtterance | null = null;
+export class UniversalAudioTTSAdapter implements TextToSpeechAdapter {
+  private currentAudio: HTMLAudioElement | null = null;
 
   isSupported(): boolean {
-    if (typeof window === "undefined") return false;
-    return "speechSynthesis" in window;
+    return true; // Supported in every modern browser via HTML5 Audio element
   }
 
   getVoices(): SpeechSynthesisVoice[] {
-    if (!this.isSupported()) return [];
-    return window.speechSynthesis.getVoices() || [];
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      return window.speechSynthesis.getVoices() || [];
+    }
+    return [];
   }
 
   speak(
@@ -20,106 +21,106 @@ export class WebSpeechSynthesisAdapter implements TextToSpeechAdapter {
     onEnd?: () => void,
     onError?: (err: any) => void
   ): void {
-    if (!this.isSupported()) {
-      console.warn("[SAHAY TTS]: speechSynthesis not supported in this browser");
-      if (onError) onError("Text-to-speech not supported");
+    if (typeof window === "undefined") return;
+
+    // 1. Stop any current playback
+    this.stop();
+
+    // 2. First attempt: Stream natural audio from SAHAY's backend audio streaming route
+    try {
+      const cleanText = text.replace(/[*_#]/g, "").slice(0, 200);
+      const audioUrl = `/api/v1/speech/tts?text=${encodeURIComponent(cleanText)}&lang=${encodeURIComponent(bcp47Language)}`;
+
+      const audio = new Audio(audioUrl);
+      this.currentAudio = audio;
+
+      audio.onplay = () => {
+        if (onStart) onStart();
+      };
+
+      audio.onended = () => {
+        this.currentAudio = null;
+        if (onEnd) onEnd();
+      };
+
+      audio.onerror = (e) => {
+        console.warn("[SAHAY Audio Fallback to Browser SpeechSynthesis]:", e);
+        // Fallback to browser SpeechSynthesis if network audio stream fails
+        this.speakBrowserFallback(text, bcp47Language, onStart, onEnd, onError);
+      };
+
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn("[SAHAY Audio Play Blocked/Failed, using fallback]:", err);
+          this.speakBrowserFallback(text, bcp47Language, onStart, onEnd, onError);
+        });
+      }
+    } catch (err) {
+      this.speakBrowserFallback(text, bcp47Language, onStart, onEnd, onError);
+    }
+  }
+
+  private speakBrowserFallback(
+    text: string,
+    bcp47Language: string,
+    onStart?: () => void,
+    onEnd?: () => void,
+    onError?: (err: any) => void
+  ) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      if (onError) onError("Audio not supported");
       return;
     }
 
     try {
-      // 1. Always cancel any ongoing speech
       window.speechSynthesis.cancel();
-
-      // 2. Resume if browser paused it (known Chromium issue)
       if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
       }
 
-      // 3. Create fresh utterance
       const utterance = new SpeechSynthesisUtterance(text);
-      this.activeUtterance = utterance;
-      // Also pin to window so Chromium garbage collector cannot kill it mid-speech
-      (window as any).__active_sahay_tts__ = utterance;
-
       utterance.lang = bcp47Language;
       utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
 
-      // 4. Voice resolution
       const voices = window.speechSynthesis.getVoices() || [];
-      if (voices.length > 0) {
-        const langPrefix = bcp47Language.split("-")[0].toLowerCase();
-
-        // Exact match (e.g. hi-IN, en-IN, ta-IN)
-        const exact = voices.find((v) => v.lang.toLowerCase() === bcp47Language.toLowerCase());
-        // Prefix match (e.g. hi, ta, mr)
-        const prefix = voices.find((v) => v.lang.toLowerCase().startsWith(langPrefix));
-        // Indian English
-        const enIn = voices.find((v) => v.lang.toLowerCase().includes("en-in") || v.lang.toLowerCase().includes("en_in"));
-        // Default or first voice
-        const fallback = voices.find((v) => v.default) || voices[0];
-
-        const selectedVoice = exact || prefix || enIn || fallback;
-        if (selectedVoice) {
-          utterance.voice = selectedVoice;
-        }
+      const exact = voices.find((v) => v.lang.toLowerCase() === bcp47Language.toLowerCase());
+      const fallback = voices.find((v) => v.lang.toLowerCase().startsWith("en")) || voices[0];
+      if (exact || fallback) {
+        utterance.voice = exact || fallback;
       }
 
-      // 5. Wire lifecycle events
       utterance.onstart = () => {
         if (onStart) onStart();
       };
-
       utterance.onend = () => {
-        this.activeUtterance = null;
-        (window as any).__active_sahay_tts__ = null;
         if (onEnd) onEnd();
       };
-
-      utterance.onerror = (e: any) => {
-        // 'canceled' or 'interrupted' is normal when user clicks stop
-        if (e.error === "canceled" || e.error === "interrupted") {
-          this.activeUtterance = null;
-          (window as any).__active_sahay_tts__ = null;
-          if (onEnd) onEnd();
-          return;
-        }
-
-        console.warn("[SAHAY TTS Error Event]:", e);
-        this.activeUtterance = null;
-        (window as any).__active_sahay_tts__ = null;
-        if (onError) onError(e);
+      utterance.onerror = (err) => {
+        if (err.error !== "canceled" && onError) onError(err);
       };
 
-      // 6. Speak!
       window.speechSynthesis.speak(utterance);
-
-      // Chrome long-text workaround: chrome stops speaking after ~15s unless paused/resumed periodically
-      const resumeInterval = setInterval(() => {
-        if (!window.speechSynthesis.speaking) {
-          clearInterval(resumeInterval);
-        } else {
-          window.speechSynthesis.pause();
-          window.speechSynthesis.resume();
-        }
-      }, 10000);
-
-    } catch (err) {
-      console.error("[SAHAY TTS Exception]:", err);
-      if (onError) onError(err);
+    } catch (e) {
+      if (onError) onError(e);
     }
   }
 
   stop(): void {
-    if (this.isSupported()) {
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+      } catch {}
+      this.currentAudio = null;
+    }
+
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
         window.speechSynthesis.cancel();
-        this.activeUtterance = null;
-        (window as any).__active_sahay_tts__ = null;
       } catch {}
     }
   }
 }
 
-export const textToSpeechAdapter = new WebSpeechSynthesisAdapter();
+export const textToSpeechAdapter = new UniversalAudioTTSAdapter();
