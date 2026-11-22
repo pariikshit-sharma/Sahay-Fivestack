@@ -7,6 +7,7 @@ const ExtractRequestSchema = z.object({
   transcript: z.string().min(1),
   currentProfile: CitizenProfileSchema.optional(),
   language: z.string().optional().default("hi"),
+  engine: z.enum(["auto", "ollama", "gemini"]).optional().default("auto"),
 });
 
 export async function POST(req: NextRequest) {
@@ -21,8 +22,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { transcript, currentProfile } = parsed.data;
-    const result = await extractCitizenProfile(transcript, currentProfile);
+    const { transcript, currentProfile, engine, language } = parsed.data;
+    const result = await extractCitizenProfile(transcript, currentProfile, engine, language);
 
     return NextResponse.json(result);
   } catch (error: any) {

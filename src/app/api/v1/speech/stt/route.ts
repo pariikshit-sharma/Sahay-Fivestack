@@ -26,54 +26,75 @@ export async function POST(req: NextRequest) {
     const base64Audio = buffer.toString("base64");
     const mimeType = audioFile.type || "audio/webm";
 
-    const promptText = `Listen carefully to this audio in ${lang} or Hindi or English. Transcribe exactly what the person is saying.
-Return a clean JSON object in this exact schema:
+    const promptText = `Listen carefully to this audio in ${lang} or Hindi or English or any Indian language.
+Transcribe exactly what the citizen is saying regarding their occupation, location, income, or welfare scheme needs.
+Return a clean JSON object with this exact key:
 {
-  "transcript": "the transcribed text"
+  "transcript": "the full transcribed text"
 }`;
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent?key=${geminiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: promptText },
+    const modelsToTry = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
+    let transcribedText = "";
+    let lastError = "";
+
+    for (const model of modelsToTry) {
+      try {
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [
                 {
-                  inlineData: {
-                    mimeType: mimeType.split(";")[0],
-                    data: base64Audio,
-                  },
+                  parts: [
+                    { text: promptText },
+                    {
+                      inlineData: {
+                        mimeType: mimeType.split(";")[0],
+                        data: base64Audio,
+                      },
+                    },
+                  ],
                 },
               ],
-            },
-          ],
-          generationConfig: {
-            responseMimeType: "application/json",
-          },
-        }),
+              generationConfig: {
+                responseMimeType: "application/json",
+              },
+            }),
+          }
+        );
+
+        if (!geminiRes.ok) {
+          lastError = await geminiRes.text();
+          console.warn(`[Gemini STT ${model} Error]:`, lastError);
+          continue;
+        }
+
+        const json = await geminiRes.json();
+        const rawContent = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawContent) continue;
+
+        const cleanJson = rawContent.replace(/```json\n?|\n?```/g, "").trim();
+        const parsed = JSON.parse(cleanJson);
+        transcribedText = parsed.transcript || cleanJson;
+        if (transcribedText) break;
+      } catch (err: any) {
+        lastError = err.message;
+        console.warn(`[Gemini STT ${model} Exception]:`, err);
       }
-    );
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.warn("[Gemini Audio STT Error]:", errText);
-      return NextResponse.json({ success: false, error: errText }, { status: 502 });
     }
 
-    const json = await geminiRes.json();
-    const resultText = json.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!resultText) {
-      return NextResponse.json({ success: false, error: "Empty model response" }, { status: 500 });
+    if (!transcribedText) {
+      return NextResponse.json(
+        { success: false, error: lastError || "Failed to transcribe audio" },
+        { status: 502 }
+      );
     }
 
-    const parsed = JSON.parse(resultText);
     return NextResponse.json({
       success: true,
-      transcript: parsed.transcript || "",
+      transcript: transcribedText,
     });
   } catch (err: any) {
     console.error("[Audio STT Exception]:", err);

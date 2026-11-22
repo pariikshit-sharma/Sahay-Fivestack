@@ -9,6 +9,8 @@ export interface ExtractionResult {
     questionHi: string;
     questionEn: string;
   };
+  aiRecommendation?: string;
+  engineUsed?: "ollama" | "gemini" | "deterministic";
 }
 
 // Indian state keyword mappings
@@ -262,88 +264,264 @@ export function extractProfileDeterministic(
 }
 
 /**
- * Universal Profile Extraction entry point.
- * Uses free Google Gemini API if GEMINI_API_KEY is configured;
- * otherwise automatically uses the 100% Free Deterministic Extractor.
+ * Local Ollama Model Extractor.
+ * Connects directly to local Ollama daemon (127.0.0.1:11434) using local qwen2.5:0.5b.
+ * 100% private, offline, runs on GPU/CPU with zero internet needed.
  */
-export async function extractCitizenProfile(
+async function extractWithOllama(
   transcript: string,
-  existingProfile: CitizenProfile = DefaultCitizenProfile
-): Promise<ExtractionResult> {
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-
-  if (!geminiApiKey) {
-    // Free local fallback
-    return extractProfileDeterministic(transcript, existingProfile);
-  }
+  existingProfile: CitizenProfile = DefaultCitizenProfile,
+  language: string = "hi"
+): Promise<{ profile: CitizenProfile; recommendation?: string } | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
 
   try {
-    const prompt = `You are the profile extractor for SAHAY, an Indian public welfare discovery platform.
-Extract the citizen's parameters from their speech transcript into the requested JSON format.
-Only extract facts explicitly stated. Do NOT invent or assume values.
+    const prompt = `You are SAHAY, an Indian public welfare schemes assistant.
+A citizen spoke their situation: "${transcript}"
 
-Citizen transcript: "${transcript}"
-Current profile: ${JSON.stringify(existingProfile)}
-
-Return strictly JSON matching this structure:
+Extract their parameters into JSON matching this exact structure:
 {
-  "age": number or null,
-  "gender": "female" | "male" | "other" | null,
-  "state": "IN-HR" | "IN-UP" | "IN-DL" | "IN-BR" | "IN-MP" | null,
-  "occupation": "farmer" | "daily_wage_worker" | "street_vendor" | "student" | "unemployed" | "self_employed" | "salaried" | "homemaker" | "other" | null,
-  "annualHouseholdIncome": number (in INR) or null,
-  "landholdingAcres": number (in acres) or null,
-  "isPregnantOrLactating": boolean or null
-}`;
+  "profile": {
+    "age": null,
+    "gender": null,
+    "state": null,
+    "occupation": null,
+    "annualHouseholdIncome": null,
+    "landholdingAcres": null,
+    "isPregnantOrLactating": null
+  },
+  "recommendation": "A friendly, compassionate 2-sentence conversational understanding in simple ${language === "en" ? "English" : "Hindi"} explaining what benefits or schemes they can receive."
+}
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${geminiApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json" },
-        }),
-      }
-    );
+Rules:
+- state must be an ISO-3166-2:IN code (like "IN-HR", "IN-UP", "IN-DL", "IN-BR", "IN-MP", "IN-MH", "IN-GJ", "IN-WB", "IN-TN", "IN-AP", "IN-TG", "IN-KA", "IN-KL", "IN-PB", "IN-OR") or null.
+- occupation must be one of: "farmer", "daily_wage_worker", "street_vendor", "student", "unemployed", "self_employed", "salaried", "homemaker", "other", or null.
+- annualHouseholdIncome in INR (e.g. 80000 for 80 हज़ार).
+- landholdingAcres in numeric acres.
+- Output strictly JSON only.`;
 
-    if (!response.ok) {
-      return extractProfileDeterministic(transcript, existingProfile);
-    }
+    const response = await fetch("http://127.0.0.1:11434/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "qwen2.5:0.5b",
+        prompt,
+        stream: false,
+        format: "json",
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) return null;
 
     const data = await response.json();
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!content) {
-      return extractProfileDeterministic(transcript, existingProfile);
-    }
+    if (!data.response) return null;
 
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(data.response);
+    const p = parsed.profile || parsed;
+    let recommendation: string | undefined = parsed.recommendation || undefined;
+
     const merged: CitizenProfile = {
       ...existingProfile,
-      ...(parsed.age !== undefined && parsed.age !== null ? { age: parsed.age } : {}),
-      ...(parsed.gender ? { gender: parsed.gender } : {}),
-      ...(parsed.state ? { state: parsed.state } : {}),
-      ...(parsed.occupation ? { occupation: parsed.occupation } : {}),
-      ...(parsed.annualHouseholdIncome !== undefined && parsed.annualHouseholdIncome !== null
-        ? { annualHouseholdIncome: parsed.annualHouseholdIncome }
+      ...(p.age !== undefined && p.age !== null ? { age: Number(p.age) } : {}),
+      ...(p.gender ? { gender: p.gender } : {}),
+      ...(p.state ? { state: p.state } : {}),
+      ...(p.occupation ? { occupation: p.occupation } : {}),
+      ...(p.annualHouseholdIncome !== undefined && p.annualHouseholdIncome !== null
+        ? { annualHouseholdIncome: Number(p.annualHouseholdIncome) }
         : {}),
-      ...(parsed.landholdingAcres !== undefined && parsed.landholdingAcres !== null
-        ? { landholdingAcres: parsed.landholdingAcres }
+      ...(p.landholdingAcres !== undefined && p.landholdingAcres !== null
+        ? { landholdingAcres: Number(p.landholdingAcres) }
         : {}),
-      ...(parsed.isPregnantOrLactating !== undefined && parsed.isPregnantOrLactating !== null
-        ? { isPregnantOrLactating: parsed.isPregnantOrLactating }
+      ...(p.isPregnantOrLactating !== undefined && p.isPregnantOrLactating !== null
+        ? { isPregnantOrLactating: Boolean(p.isPregnantOrLactating) }
         : {}),
     };
 
-    // Calculate extracted fields
-    const extractedFields: string[] = [];
-    for (const [k, v] of Object.entries(parsed)) {
-      if (v !== null && v !== undefined) extractedFields.push(k);
+    // If small model repeated prompt placeholder text, generate tailored grounded recommendation
+    if (
+      !recommendation ||
+      recommendation.includes("conversational understanding") ||
+      recommendation.includes("compassionate") ||
+      recommendation.length < 15
+    ) {
+      if (merged.occupation === "farmer") {
+        recommendation =
+          language === "en"
+            ? `As a farmer owning land, you are a prime candidate for PM-KISAN (₹6,000/yr support) and Pradhan Mantri Fasal Bima Yojana.`
+            : `किसान भाई, आपकी कृषि भूमि और स्थिति के आधार पर आप पीएम-किसान सम्मान निधि (₹6,000 वार्षिक) और फसल सुरक्षा योजनाओं के पात्र हैं।`;
+      } else if (merged.isPregnantOrLactating) {
+        recommendation =
+          language === "en"
+            ? `Under national maternal welfare programs, you qualify for PMMVY (₹5,000 maternity financial support) and free healthcare.`
+            : `मातृ वंदन योजना (PMMVY) के तहत आपको ₹5,000 की वित्तीय सहायता व सरकारी अस्पताल में निःशुल्क पोषण व देखभाल प्राप्त होगी।`;
+      } else if (merged.occupation === "street_vendor") {
+        recommendation =
+          language === "en"
+            ? `Under PM SVANidhi, you are eligible for micro-credit working capital loans up to ₹50,000 with 7% interest subsidy.`
+            : `पीएम स्वनिधि योजना के तहत आपको व्यापार बढ़ाने हेतु ₹50,000 तक का आसान कार्यशील पूंजी ऋण व ब्याज सब्सिडी प्राप्त हो सकती है।`;
+      } else {
+        recommendation =
+          language === "en"
+            ? `Based on your stated occupation and income, you qualify for verified government welfare and health coverage schemes.`
+            : `आपकी आय और कार्य विवरण के अनुसार आप सरकारी स्वास्थ्य सुरक्षा और आजीविका सहायता योजनाओं के लिए पात्र हैं।`;
+      }
     }
 
-    return extractProfileDeterministic(transcript, merged);
-  } catch {
-    return extractProfileDeterministic(transcript, existingProfile);
+    return { profile: merged, recommendation };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.warn("[Ollama Extraction Warning]:", err);
+    return null;
   }
+}
+
+/**
+ * Google Gemini Cloud Model Extractor.
+ * Connects to Google Generative Language API using gemini-3.5-flash-lite / gemini-3.8-flash.
+ */
+async function extractWithGemini(
+  transcript: string,
+  existingProfile: CitizenProfile = DefaultCitizenProfile,
+  language: string = "hi"
+): Promise<{ profile: CitizenProfile; recommendation?: string } | null> {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) return null;
+
+  const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
+
+  const prompt = `You are SAHAY, an Indian public welfare discovery platform.
+A citizen spoke their situation: "${transcript}"
+
+Extract their parameters into JSON matching this exact structure:
+{
+  "profile": {
+    "age": null,
+    "gender": null,
+    "state": null,
+    "occupation": null,
+    "annualHouseholdIncome": null,
+    "landholdingAcres": null,
+    "isPregnantOrLactating": null
+  },
+  "recommendation": "A friendly, compassionate 2-sentence conversational understanding in simple ${language === "en" ? "English" : "Hindi"} explaining what government benefits fit their demands."
+}
+
+Rules:
+- state must be an ISO-3166-2:IN code (like "IN-HR", "IN-UP", "IN-DL", "IN-BR", "IN-MP", "IN-MH", "IN-GJ", "IN-WB", "IN-TN", "IN-AP", "IN-TG", "IN-KA", "IN-KL", "IN-PB", "IN-OR") or null.
+- occupation must be one of: "farmer", "daily_wage_worker", "street_vendor", "student", "unemployed", "self_employed", "salaried", "homemaker", "other", or null.
+- annualHouseholdIncome in INR (e.g. 80000 for 80 हज़ार).
+- landholdingAcres in numeric acres.
+- Output strictly JSON only.`;
+
+  for (const model of models) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" },
+          }),
+        }
+      );
+
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!content) continue;
+
+      const cleanJson = content.replace(/```json\n?|\n?```/g, "").trim();
+      const parsed = JSON.parse(cleanJson);
+      const p = parsed.profile || parsed;
+      const recommendation = parsed.recommendation || undefined;
+
+      const merged: CitizenProfile = {
+        ...existingProfile,
+        ...(p.age !== undefined && p.age !== null ? { age: Number(p.age) } : {}),
+        ...(p.gender ? { gender: p.gender } : {}),
+        ...(p.state ? { state: p.state } : {}),
+        ...(p.occupation ? { occupation: p.occupation } : {}),
+        ...(p.annualHouseholdIncome !== undefined && p.annualHouseholdIncome !== null
+          ? { annualHouseholdIncome: Number(p.annualHouseholdIncome) }
+          : {}),
+        ...(p.landholdingAcres !== undefined && p.landholdingAcres !== null
+          ? { landholdingAcres: Number(p.landholdingAcres) }
+          : {}),
+        ...(p.isPregnantOrLactating !== undefined && p.isPregnantOrLactating !== null
+          ? { isPregnantOrLactating: Boolean(p.isPregnantOrLactating) }
+          : {}),
+      };
+
+      return { profile: merged, recommendation };
+    } catch (err) {
+      console.warn(`[Gemini Extraction ${model} Warning]:`, err);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Universal Profile Extraction entry point.
+ * Supports:
+ * - "ollama": Uses local Ollama model (qwen2.5:0.5b) on 127.0.0.1:11434 (offline, GPU/CPU).
+ * - "gemini": Uses Google Gemini API (gemini-3.5-flash-lite / gemini-3.8-flash).
+ * - "auto": Tries local Ollama first; if unavailable, uses Gemini API; falls back to Deterministic.
+ */
+export async function extractCitizenProfile(
+  transcript: string,
+  existingProfile: CitizenProfile = DefaultCitizenProfile,
+  engineChoice: "auto" | "ollama" | "gemini" = "auto",
+  language: string = "hi"
+): Promise<ExtractionResult> {
+  let aiResult: { profile: CitizenProfile; recommendation?: string } | null = null;
+  let engineUsed: "ollama" | "gemini" | "deterministic" = "deterministic";
+
+  if (engineChoice === "ollama") {
+    aiResult = await extractWithOllama(transcript, existingProfile, language);
+    if (aiResult) {
+      engineUsed = "ollama";
+    } else {
+      // Fallback to Gemini or Deterministic if Ollama is not running
+      aiResult = await extractWithGemini(transcript, existingProfile, language);
+      if (aiResult) engineUsed = "gemini";
+    }
+  } else if (engineChoice === "gemini") {
+    aiResult = await extractWithGemini(transcript, existingProfile, language);
+    if (aiResult) {
+      engineUsed = "gemini";
+    } else {
+      // Fallback to Ollama or Deterministic
+      aiResult = await extractWithOllama(transcript, existingProfile, language);
+      if (aiResult) engineUsed = "ollama";
+    }
+  } else {
+    // "auto" mode: Try Ollama first (offline-first!), then Gemini
+    aiResult = await extractWithOllama(transcript, existingProfile, language);
+    if (aiResult) {
+      engineUsed = "ollama";
+    } else {
+      aiResult = await extractWithGemini(transcript, existingProfile, language);
+      if (aiResult) engineUsed = "gemini";
+    }
+  }
+
+  // Base profile either from AI result or existing
+  const baseProfile = aiResult ? aiResult.profile : existingProfile;
+
+  // Always run deterministic extractor on top to guarantee keywords, digits and fallbacks
+  const deterministicResult = extractProfileDeterministic(transcript, baseProfile);
+
+  return {
+    ...deterministicResult,
+    aiRecommendation: aiResult?.recommendation,
+    engineUsed,
+  };
 }

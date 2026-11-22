@@ -44,6 +44,11 @@ import { AutoApplyModal } from "@/components/schemes/AutoApplyModal";
 export default function SimpleModePage() {
   const { t, language } = useApp();
 
+  // Model engine selector: "auto" | "ollama" | "gemini"
+  const [aiEngine, setAiEngine] = useState<"auto" | "ollama" | "gemini">("auto");
+  const [aiRecommendation, setAiRecommendation] = useState<string | undefined>(undefined);
+  const [engineUsed, setEngineUsed] = useState<"ollama" | "gemini" | "deterministic" | undefined>(undefined);
+
   // Wizard state: 'speak' | 'review' | 'results'
   const [phase, setPhase] = useState<"speak" | "review" | "results">("speak");
   const [transcript, setTranscript] = useState("");
@@ -217,11 +222,43 @@ export default function SimpleModePage() {
     setIsProcessing(true);
 
     try {
-      const result = await extractCitizenProfile(text, profile);
+      const res = await fetch("/api/v1/profile/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: text,
+          currentProfile: profile,
+          engine: aiEngine,
+          language,
+        }),
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        setProfile(result.profile);
+        setExtractedFields(result.extractedFields || []);
+        setMissingFields(result.missingCriticalFields || []);
+        setFollowUp(result.suggestedFollowUp);
+        setAiRecommendation(result.aiRecommendation);
+        setEngineUsed(result.engineUsed);
+      } else {
+        const result = await extractCitizenProfile(text, profile, aiEngine, language);
+        setProfile(result.profile);
+        setExtractedFields(result.extractedFields);
+        setMissingFields(result.missingCriticalFields);
+        setFollowUp(result.suggestedFollowUp);
+        setAiRecommendation(result.aiRecommendation);
+        setEngineUsed(result.engineUsed);
+      }
+      setPhase("review");
+    } catch {
+      const result = await extractCitizenProfile(text, profile, aiEngine, language);
       setProfile(result.profile);
       setExtractedFields(result.extractedFields);
       setMissingFields(result.missingCriticalFields);
       setFollowUp(result.suggestedFollowUp);
+      setAiRecommendation(result.aiRecommendation);
+      setEngineUsed(result.engineUsed);
       setPhase("review");
     } finally {
       setIsProcessing(false);
@@ -253,6 +290,8 @@ export default function SimpleModePage() {
     setExtractedFields([]);
     setMissingFields([]);
     setFollowUp(undefined);
+    setAiRecommendation(undefined);
+    setEngineUsed(undefined);
     setMatches([]);
     setPhase("speak");
   };
@@ -308,6 +347,49 @@ export default function SimpleModePage() {
           </CardHeader>
 
           <CardContent className="p-0 space-y-6">
+            {/* AI Model Brain Selector */}
+            <div className="p-3 bg-sahay-warm-50 rounded-2xl border border-sahay-warm-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-sahay-navy-950 font-bold">
+                <Sparkles className="w-4 h-4 text-sahay-green-700" />
+                <span>AI Language Brain:</span>
+              </div>
+              <div className="inline-flex rounded-xl p-1 bg-sahay-warm-200/80 border border-sahay-warm-300">
+                <button
+                  type="button"
+                  onClick={() => setAiEngine("auto")}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                    aiEngine === "auto"
+                      ? "bg-white text-sahay-navy-950 shadow-sm"
+                      : "text-sahay-navy-700 hover:text-sahay-navy-950"
+                  }`}
+                >
+                  ⚡ Auto (Recommended)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAiEngine("ollama")}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                    aiEngine === "ollama"
+                      ? "bg-white text-sahay-navy-950 shadow-sm"
+                      : "text-sahay-navy-700 hover:text-sahay-navy-950"
+                  }`}
+                >
+                  💻 Local Ollama (Offline)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAiEngine("gemini")}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                    aiEngine === "gemini"
+                      ? "bg-white text-sahay-navy-950 shadow-sm"
+                      : "text-sahay-navy-700 hover:text-sahay-navy-950"
+                  }`}
+                >
+                  ☁️ Google Gemini API
+                </button>
+              </div>
+            </div>
+
             {/* Primary Voice Action Button */}
             <VoiceInputButton
               onTranscript={(text) => {
@@ -397,9 +479,55 @@ export default function SimpleModePage() {
 
           <CardContent className="p-0 space-y-5">
             {/* Citizen's Original Words */}
-            <div className="p-3.5 rounded-xl bg-sahay-warm-100 border border-sahay-warm-200 text-xs sm:text-sm text-sahay-navy-950 italic">
-              "{transcript}"
+            <div className="p-3.5 rounded-xl bg-sahay-warm-100 border border-sahay-warm-200 text-xs sm:text-sm text-sahay-navy-950 italic flex items-start justify-between gap-3">
+              <div>
+                <span className="font-bold not-italic text-sahay-navy-800 mr-1.5">
+                  {language === "hi" ? "आपकी बात:" : "Your Input:"}
+                </span>
+                <span>"{transcript}"</span>
+              </div>
+              <ReadAloudButton textToRead={transcript} />
             </div>
+
+            {/* AI Demands Understanding & Recommendation */}
+            {aiRecommendation && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-300 space-y-3 shadow-sm">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-emerald-700 animate-pulse" />
+                    <span className="font-extrabold text-sahay-navy-950 text-sm">
+                      {language === "hi"
+                        ? "एआई समझ व योजना सिफारिश (AI Voice Understanding)"
+                        : "AI Demands Understanding & Recommendation"}
+                    </span>
+                  </div>
+                  <Badge
+                    variant={engineUsed === "ollama" ? "success" : "navy"}
+                    size="sm"
+                    className="font-bold text-xs"
+                  >
+                    {engineUsed === "ollama"
+                      ? "💻 Local Ollama (Offline)"
+                      : engineUsed === "gemini"
+                      ? "☁️ Google Gemini"
+                      : "⚡ Deterministic AST"}
+                  </Badge>
+                </div>
+
+                <p className="text-sm sm:text-base font-semibold text-sahay-navy-950 leading-relaxed bg-white/80 p-3.5 rounded-xl border border-emerald-200">
+                  {aiRecommendation}
+                </p>
+
+                <div className="flex items-center justify-between pt-1 text-xs text-emerald-900">
+                  <span className="font-medium">
+                    {language === "hi"
+                      ? "नीचे प्रामाणिक सरकारी नियमों द्वारा आपकी पात्रता जांची गई है:"
+                      : "Verified against official central & state eligibility criteria:"}
+                  </span>
+                  <ReadAloudButton textToRead={aiRecommendation} />
+                </div>
+              </div>
+            )}
 
             {/* Extracted Profile Cards Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
