@@ -310,11 +310,9 @@ export default function SimpleModePage() {
           <CardContent className="p-0 space-y-6">
             {/* Primary Voice Action Button */}
             <VoiceInputButton
-              onTranscript={(text, isFinal) => {
+              onTranscript={(text) => {
+                // Real-time transcript sync: Every single word you speak appears immediately in the text box below
                 setTranscript(text);
-                if (isFinal && text.trim().length > 3) {
-                  handleTranscriptReceived(text);
-                }
               }}
             />
 

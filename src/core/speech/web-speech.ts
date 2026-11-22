@@ -7,12 +7,9 @@ declare global {
   }
 }
 
-export class WebSpeechAdapter implements SpeechToTextAdapter {
+export class DirectSpeechRecognitionAdapter implements SpeechToTextAdapter {
   private recognition: any = null;
-  private isExplicitlyStarted: boolean = false;
-  private currentLanguage: string = "hi-IN";
-  private restartTimeout: any = null;
-  private accumulatedTranscript: string = "";
+  private isListening: boolean = false;
 
   isSupported(): boolean {
     if (typeof window === "undefined") return false;
@@ -27,116 +24,103 @@ export class WebSpeechAdapter implements SpeechToTextAdapter {
   ): void {
     if (!this.isSupported()) {
       onStateChange("unsupported");
-      onError("Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge, or type instead.");
+      onError("Your browser does not support voice recognition. Please use Google Chrome or Edge.");
       return;
     }
 
-    this.currentLanguage = bcp47Language;
-    this.isExplicitlyStarted = true;
-    this.accumulatedTranscript = "";
+    try {
+      const SpeechRecognitionConstructor =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    const initAndStart = () => {
-      if (!this.isExplicitlyStarted) return;
+      // Abort any previous running instance cleanly
+      if (this.recognition) {
+        try {
+          this.recognition.abort();
+        } catch {}
+        this.recognition = null;
+      }
 
-      try {
-        const SpeechRecognitionConstructor =
-          window.SpeechRecognition || window.webkitSpeechRecognition;
+      const rec = new SpeechRecognitionConstructor();
+      
+      // Setup language & properties
+      rec.lang = bcp47Language || "hi-IN";
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.maxAlternatives = 1;
 
-        if (this.recognition) {
-          try {
-            this.recognition.abort();
-          } catch {}
-          this.recognition = null;
+      rec.onstart = () => {
+        this.isListening = true;
+        onStateChange("listening");
+      };
+
+      rec.onresult = (event: any) => {
+        let finalStr = "";
+        let interimStr = "";
+
+        for (let i = 0; i < event.results.length; i++) {
+          const res = event.results[i];
+          if (res.isFinal) {
+            finalStr += res[0].transcript + " ";
+          } else {
+            interimStr += res[0].transcript;
+          }
         }
 
-        const rec = new SpeechRecognitionConstructor();
-        rec.lang = this.currentLanguage;
-        rec.continuous = true;
-        rec.interimResults = true;
-        rec.maxAlternatives = 1;
+        const currentWords = (finalStr + interimStr).trim();
+        if (currentWords) {
+          // Immediately send text so user sees real-time typing in text box
+          onResult({
+            transcript: currentWords,
+            isFinal: !!finalStr && !interimStr,
+            confidence: event.results[event.results.length - 1]?.[0]?.confidence,
+          });
+        }
+      };
 
-        rec.onstart = () => {
-          onStateChange("listening");
-        };
+      rec.onerror = (event: any) => {
+        console.warn("[SAHAY Speech]: error event", event.error);
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          this.isListening = false;
+          onStateChange("permission_denied");
+          onError("Microphone permission denied. Click the lock/settings icon in the address bar to allow microphone.");
+        } else if (event.error === "network") {
+          onError("Voice network error. Chrome speech server was unreachable. Please type or check internet.");
+        }
+      };
 
-        rec.onresult = (event: any) => {
-          let interim = "";
-          let final = "";
-
-          for (let i = 0; i < event.results.length; ++i) {
-            const res = event.results[i];
-            if (res.isFinal) {
-              final += res[0].transcript + " ";
-            } else {
-              interim += res[0].transcript;
-            }
-          }
-
-          const combined = (final + interim).trim();
-          if (combined) {
-            onResult({
-              transcript: combined,
-              isFinal: !!final,
-              confidence: event.results[0]?.[0]?.confidence,
-            });
-          }
-        };
-
-        rec.onerror = (event: any) => {
-          console.warn("[SAHAY Speech Recognition Error]:", event.error);
-
-          if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-            this.isExplicitlyStarted = false;
-            onStateChange("permission_denied");
-            onError("Microphone permission was denied. Please allow microphone access in your browser settings (click lock icon in address bar).");
-          } else if (event.error === "no-speech") {
-            // Keep listening, do not abort
-          } else if (event.error === "network") {
-            // Chrome speech recognition uses Google servers; network glitch
-            console.warn("[SAHAY Speech]: network glitch, attempting keep-alive restart...");
-          }
-        };
-
-        rec.onend = () => {
-          // If the user hasn't explicitly clicked Stop, automatically keep recognition alive!
-          if (this.isExplicitlyStarted) {
-            clearTimeout(this.restartTimeout);
-            this.restartTimeout = setTimeout(() => {
-              if (this.isExplicitlyStarted) {
-                try {
-                  rec.start();
-                } catch {
-                  initAndStart();
-                }
-              }
-            }, 300);
-          } else {
+      rec.onend = () => {
+        // If ended but user is still in listening mode, auto-restart to prevent unexpected stops
+        if (this.isListening) {
+          try {
+            rec.start();
+          } catch {
+            this.isListening = false;
             onStateChange("idle");
           }
-        };
+        } else {
+          onStateChange("idle");
+        }
+      };
 
-        this.recognition = rec;
-        rec.start();
-      } catch (err: any) {
-        console.error("[SAHAY Speech Init Failed]:", err);
-        this.isExplicitlyStarted = false;
-        onStateChange("error");
-        onError(err.message || "Failed to initialize microphone.");
-      }
-    };
-
-    initAndStart();
+      this.recognition = rec;
+      rec.start();
+    } catch (err: any) {
+      console.error("[Speech Start Error]:", err);
+      this.isListening = false;
+      onStateChange("error");
+      onError(err.message || "Failed to start microphone.");
+    }
   }
 
   stop(): void {
-    this.isExplicitlyStarted = false;
-    clearTimeout(this.restartTimeout);
+    this.isListening = false;
     if (this.recognition) {
       try {
         this.recognition.stop();
       } catch {}
+      this.recognition = null;
     }
   }
 }
 
-export const speechToTextAdapter = new WebSpeechAdapter();
+export const speechToTextAdapter = new DirectSpeechRecognitionAdapter();
