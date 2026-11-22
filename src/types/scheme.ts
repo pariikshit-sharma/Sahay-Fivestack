@@ -91,6 +91,7 @@ export interface Scheme {
   verificationStatus: VerificationStatus;
   verifiedAt?: string;
   verifiedBy?: string;
+  confidenceScore?: number;
   lastReverifiedAt?: string;
   rules: EligibilityRule[];
   documents: SchemeDocument[];

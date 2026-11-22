@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const CitizenProfileSchema = z.object({
+  name: z.string().nullable().default(null),
   age: z.number().int().min(0).max(120).nullable().default(null),
   gender: z.enum(["female", "male", "other"]).nullable().default(null),
   state: z.string().nullable().default(null),
@@ -33,6 +34,7 @@ export const CitizenProfileSchema = z.object({
 export type CitizenProfile = z.infer<typeof CitizenProfileSchema>;
 
 export const DefaultCitizenProfile: CitizenProfile = {
+  name: null,
   age: null,
   gender: null,
   state: null,
